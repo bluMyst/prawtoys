@@ -4,6 +4,10 @@
 #TODO: Only ask user for login if needed
 #TODO: head ls and tail should show indicies
 
+#TODO: do_* methods should error like this (python standard)
+#      print '*** error text here'
+#      return
+
 # Imports. {{{1
 import praw
 import cmd
@@ -11,6 +15,8 @@ import os
 import re
 import sys
 import itertools
+import traceback
+from pprint import pprint
 #import example_oauth_webserver
 
 # Constants and functions. {{{1
@@ -65,7 +71,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         exit(0)
     do_exit = do_EOF
 
-    # Utility methods. {{{2
+    # Internal utility methods. {{{2
     def add_items(self, l):
         self.old_items = self.items[:]
         self.items += list(l)
@@ -85,6 +91,17 @@ class PRAWToys(cmd.Cmd): # {{{1
     def do_reset(self, arg):
         '''reset: clear all items found so far'''
         self.items = []
+
+    # Debug commands. {{{2
+    def do_x(self, arg):
+        '''x <command>: execute <command> as python code and pretty-print the result (if any)'''
+        try:
+            try:
+                pprint(eval(arg))
+            except SyntaxError:
+                exec(arg)
+        except:
+            traceback.print_exception(*sys.exc_info())
 
     # Commands to add items. {{{2
     def do_submission(self, arg):
@@ -133,6 +150,44 @@ class PRAWToys(cmd.Cmd): # {{{1
         '''mycoms: get your comments'''
         self.add_items(
             list(r.user.get_comments(limit=None))
+        )
+
+    def do_thread(self, arg):
+        '''thread <submission id> [n=10,000]: get <n> comments from thread. BUGGY'''
+        #raise NotImplementedError
+
+        args = arg.split()
+        sub_id = args[0]
+        print 'Retrieving thread id: {sub_id}'.format(**locals())
+
+        try:
+            n = int(args[1])
+        except IndexError, ValueError:
+            n = 10000
+
+        sub = praw.objects.Submission.from_id(
+                self.reddit_session, sub_id)
+
+        print 'Retrieving comments...'
+        #while True:
+        #    coms = praw.helpers.flatten_tree(sub.comments)
+        #    ncoms = 0
+
+        #    for i in coms:
+        #        if type(i) != praw.objects.MoreComments:
+        #            ncoms += 1
+
+        #    print '\r{ncoms}/{n}'.format(**locals()),
+
+        #    if ncoms >= n: break
+        #    sub.replace_more_comments(limit=1)
+
+        #print
+
+        #self.add_items(list(coms))
+        self.add_items(
+            i for i in praw.helpers.flatten_tree(sub.comments)
+            if type(i) != praw.objects.MoreComments
         )
 
     # Commands for filtering. {{{2
@@ -298,7 +353,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         print_all(self.items, file_)
 
     def do_upvote(self, arg):
-        # NOTE untested
+        # NOTE untested for comments
         '''upvote: upvote EVERYTHING'''
         continue_ = raw_input("You're about to upvote EVERYTHING in the current list. Do you really want to continue? [yN]")
 
