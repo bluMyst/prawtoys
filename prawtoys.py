@@ -16,11 +16,15 @@ import re
 import sys
 import itertools
 import traceback
+import webbrowser
 from pprint import pprint
 #import example_oauth_webserver
 
 # Constants and functions. {{{1
-VERSION = "PRAWToys 0.4.0"
+VERSION = "PRAWToys 0.5.0"
+
+# When displaying comments, how many characters should we show?
+MAX_COMMENT_TEXT = 20
 
 def is_comment(submission):
     return isinstance(submission, praw.objects.Comment)
@@ -30,7 +34,14 @@ def is_submission(submission):
 
 def comment_str(comment):
     '''convert a comment to a string'''
-    return comment.permalink + '?context=824545201'
+    comment_text = str(comment)
+
+    if len(comment_text) > MAX_COMMENT_TEXT:
+        comment_text = comment_text[:MAX_COMMENT_TEXT-3] + '...'
+
+    context_link = comment.permalink + '?context=99'
+
+    return "{comment_text} :: {context_link}".format(**locals())
 
 def submission_str(submission):
     '''convert a submission to a string'''
@@ -53,18 +64,26 @@ def print_all(submissions, file_=sys.stdout):
                     repr(i.permalink))
 
 class PRAWToys(cmd.Cmd): # {{{1
-    items  = []
     prompt = '0> '
 
     def __init__(self, reddit_session, *args, **kwargs): # {{{2
+        # Don't use raw input if we can use the better alternative. (readline)
+        self.use_rawinput = not (
+            callable(sys.stdout.write) and callable(sys.stdin.readline))
+
+        self.items = []
+        self.reddit_session = reddit_session
+
         #  super() doesn't work on old-style classes like cmd.Cmd :(
         cmd.Cmd.__init__(self, *args, **kwargs)
-        self.reddit_session = reddit_session
 
     # General settings. {{{2
     def emptyline(self): pass # disable empty line repeating the last command
 
     def postcmd(self, r, l):
+        """
+        Change the prompt to show how many matches there are. Like URLToys.
+        """
         self.prompt = str(len(self.items)) + '> '
 
     def do_EOF(self, arg):
@@ -77,10 +96,11 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.items += list(l)
 
     def filter_items(self, f):
-        self.old_items = self.items[:]
-        self.items = [i for i in self.items
-            if f(i)
-        ]
+        self.old_items = self.items
+
+        # TODO: Test.
+        #self.items = [i for i in self.items if f(i)]
+        self.items = filter(f, self.items)
 
     # Undo and reset. {{{2
     def do_undo(self, arg):
@@ -89,52 +109,52 @@ class PRAWToys(cmd.Cmd): # {{{1
     do_u = do_undo
 
     def do_reset(self, arg):
-        '''reset: clear all items found so far'''
+        '''reset: clear all items'''
         self.items = []
 
     # Debug commands. {{{2
     def do_x(self, arg):
-        '''x <command>: execute <command> as python code and pretty-print the result (if any)'''
+        '''
+        x <command>: execute <command> as python code and pretty-print the
+        result (if any)
+        '''
         try:
-            try:
-                pprint(eval(arg))
-            except SyntaxError:
-                exec(arg)
+            pprint(eval(arg))
+        except SyntaxError:
+            # If 'arg' doesn't return a value, eval(arg) will raise a
+            # SyntaxError. So instead, just exec() it and don't print the
+            # (nonexistant) result.
+            exec(arg)
         except:
             traceback.print_exception(*sys.exc_info())
 
     # Commands to add items. {{{2
     def do_submission(self, arg):
         '''submission: filter out all but links and self posts'''
-        self.filter_items(lambda i:
-            is_submission(i)
-        )
+        self.filter_items(is_submission)
     do_subs = do_submission
 
     def do_comment(self, arg):
         '''comment: filter out all but comments'''
-        self.filter_items(lambda i:
-            is_comment(i)
-        )
+        self.filter_items(is_comment)
     do_coms = do_comment
 
     def do_saved(self, arg):
         '''saved: get your saved items'''
         self.add_items(
-            r.user.get_saved(limit=None)
+            self.reddit_session.user.get_saved(limit=None)
         )
 
     def do_mine(self, arg):
         '''mine: get your own submitted items'''
         self.add_items(
-              list(r.user.get_submitted(limit=None))
-            + list(r.user.get_comments(limit=None))
+              list(self.reddit_session.user.get_submitted(limit=None))
+            + list(self.reddit_session.user.get_comments(limit=None))
         )
 
     def do_user(self, arg):
-        #TODO: Test this!
         '''user <username>: get a user's submitted items'''
-        user = r.get_redditor(arg.split()[0])
+        user = self.reddit_session.get_redditor(arg.split()[0])
         self.add_items(
               list(user.get_submitted(limit=None))
             + list(user.get_comments(limit=None))
@@ -143,14 +163,12 @@ class PRAWToys(cmd.Cmd): # {{{1
     def do_mysubs(self, arg):
         '''mysubs: get your submissions'''
         self.add_items(
-            list(r.user.get_submitted(limit=None))
-        )
+            list(self.reddit_session.user.get_submitted(limit=None)))
 
     def do_mycoms(self, arg):
         '''mycoms: get your comments'''
         self.add_items(
-            list(r.user.get_comments(limit=None))
-        )
+            list(self.reddit_session.user.get_comments(limit=None)))
 
     def do_thread(self, arg):
         '''thread <submission id> [n=10,000]: get <n> comments from thread. BUGGY'''
@@ -196,30 +214,26 @@ class PRAWToys(cmd.Cmd): # {{{1
         target_sub = arg.split()[0].lower()
 
         self.filter_items(lambda x:
-            x.subreddit.display_name.lower() == target_sub
-        )
+            x.subreddit.display_name.lower() == target_sub)
 
     def do_nsub(self, arg):
         '''nsub <subreddit>: filter out anything in <subreddit>, don't include /r/'''
         target_sub = arg.split()[0].lower()
 
         self.filter_items(lambda x:
-            x.subreddit.display_name.lower() != target_sub
-        )
+            x.subreddit.display_name.lower() != target_sub)
 
     def do_sfw(self, arg):
         '''sfw: filter out anything nsfw'''
         self.filter_items(lambda x:
             # need to check is_comment or we'll get AttributeError
-            is_comment(x) or not x.over_18
-        )
+            is_comment(x) or not x.over_18)
 
     def do_nsfw(self, arg):
         '''nsfw: filter out anything sfw and all comments'''
         self.filter_items(lambda x:
             # need to check is_comment or we'll get AttributeError
-            not is_comment(x) and x.over_18
-        )
+            not is_comment(x) and x.over_18)
 
     def do_title(self, arg):
         ''' title <regex>: filter out anything whose title doesn't match <regex>
@@ -270,7 +284,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         )
 
     # Commands for viewing list items. {{{2
-    def do_ls(self, arg):
+    def do_ls(self, arg): # {{{3
         '''ls [start [n=10]]: list items, with [start] list [n] items starting at [start]'''
         #TODO: Something is wrong with start and n options.
         args = arg.split()
@@ -292,10 +306,9 @@ class PRAWToys(cmd.Cmd): # {{{1
             return
 
         print_all(
-            self.items if not start else self.items[start : start+n]
-        )
+            self.items if not start else self.items[start : start+n])
 
-    def do_head(self, arg):
+    def do_head(self, arg): # {{{3
         '''head [n=10]: show first [n] items'''
         try:
             n = int(arg.split()[0])
@@ -307,7 +320,7 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         print_all(self.items[:n])
 
-    def do_tail(self, arg):
+    def do_tail(self, arg): # {{{3
         '''tail [n=10]: show last [n] items'''
         try:
             n = int(arg.split()[0])
@@ -318,6 +331,40 @@ class PRAWToys(cmd.Cmd): # {{{1
             return
 
         print_all(self.items[-n:])
+
+    def do_view_subs(self, arg): # {{{3
+        '''view_subs: shows how many of the list items are from which sub'''
+        frequency_by_sub = {}
+
+        for i in self.items:
+            sub_name = i.subreddit.display_name.lower()
+
+            try:
+                frequency_by_sub[sub_name] += 1
+            except KeyError:
+                frequency_by_sub[sub_name] = 1
+
+        # Convert to [(k, v)] and then sort (ascending) by v.
+        frequency_by_sub = list(frequency_by_sub.iteritems())
+        frequency_by_sub.sort(key=lambda (item): item[1])
+
+        # This tells us how much we should rjust the numbers in our printout.
+        max_number_length = len(str(len(self.items)))
+
+        for sub, number in frequency_by_sub:
+            print '{number} : /r/{sub}'.format(sub=sub,
+                    number=str(number).rjust(max_number_length))
+    do_vs = do_view_subs
+
+    def do_get_links(self, arg): # {{{3
+        '''
+            get_links: generates an HTML file with all the links to everything
+            and opens it in your default browser.
+        '''
+        with open('urls.html', 'w') as html_file:
+            html_file.write('<html><body>')
+            html_file.write('</body></html>')
+
 
     # Commands for doing stuff with the items. {{{2
     def do_open(self, arg):
@@ -414,6 +461,7 @@ class PRAWToys(cmd.Cmd): # {{{1
 
 # Init code. {{{1
 r = praw.Reddit(VERSION)
+print VERSION
 
 login = raw_input('login? [Yn]')
 if not login in 'Nn' or login == '':
@@ -423,4 +471,7 @@ if not login in 'Nn' or login == '':
 
     print "If everything worked, this should be your link karma: " + str(r.user.link_karma)
 
-PRAWToys(r).cmdloop()
+try:
+    PRAWToys(r).cmdloop()
+except KeyboardInterrupt:
+    pass
