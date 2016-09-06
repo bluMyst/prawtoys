@@ -47,21 +47,21 @@ def submission_str(submission):
     '''convert a submission to a string'''
     return submission.title +' :: /r/' + submission.subreddit.display_name + ' :: ' + submission.url
 
+def praw_object_to_string(praw_object):
+    ''' only works on submissions and comments '''
+    if is_submission(praw_object):
+        return submission_str(praw_object)
+    elif is_comment(praw_object):
+        return comment_str(praw_object)
+
 def print_all(submissions, file_=sys.stdout):
     '''print all submissions'''
     for i in submissions:
-        if is_submission(i):
-            try:
-                file_.write(submission_str(i)+'\n')
-            except UnicodeEncodeError:
-                print '[Failed to .write() a submission (short_link:{}) here: UnicodeEncodeError]'.format(
-                    repr(i.short_link))
-        else:
-            try:
-                file_.write(comment_str(i)+'\n')
-            except UnicodeEncodeError:
-                print '[Failed to .write() a comment (permalink:{}) here: UnicodeEncodeError]'.format(
-                    repr(i.permalink))
+        try:
+            file_.write(praw_object_to_string(i)+'\n')
+        except UnicodeEncodeError:
+            print ('[Failed to .write() a submission/comment ({}) here:'
+                'UnicodeEncodeError]').format(str(i))
 
 class PRAWToys(cmd.Cmd): # {{{1
     prompt = '0> '
@@ -363,7 +363,24 @@ class PRAWToys(cmd.Cmd): # {{{1
         '''
         with open('urls.html', 'w') as html_file:
             html_file.write('<html><body>')
+
+            for item in self.items:
+                item_string = praw_object_to_string(item)
+
+                if is_comment(item):
+                    item_url = item.permalink + '?context=824545201'
+                elif is_submission(item):
+                    item_url = item.short_link
+                else:
+                    assert False
+
+                html_file.write(
+                    '<a href="{item_url}">{item_string}</a><br>'.format(
+                        **locals())
+
             html_file.write('</body></html>')
+
+        webbrowser.open('file://' + os.getcwd() + '/urls.html')
 
 
     # Commands for doing stuff with the items. {{{2
