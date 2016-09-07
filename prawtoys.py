@@ -3,6 +3,10 @@
 #TODO: Nodupes command, praw.objects.Submission has .__eq__() so == should work.
 #TODO: Only ask user for login if needed
 #TODO: head ls and tail should show indicies
+#TODO: Progress indicator when loading items.
+#TODO: Login through cmd.
+#TODO: nsub and sub take multiple subreddit arguments.
+#TODO: self and nself. praw.object.Submission.is_self
 
 #TODO: do_* methods should error like this (python standard)
 #      print '*** error text here'
@@ -24,41 +28,88 @@ from pprint import pprint
 VERSION = "PRAWToys 0.5.0"
 
 # When displaying comments, how many characters should we show?
-MAX_COMMENT_TEXT = 20
+MAX_COMMENT_TEXT = 80
 
-def is_comment(submission):
+def yes_no(default, question): # {{{2
+    ''' default can be True, False, or None '''
+    if default == None:
+        question += ' [yn]'
+    elif default:
+        question += ' [Yn]'
+    else:
+        question += ' [yN]'
+
+    answer = raw_input(question)
+
+    if answer in 'yY':
+        return True
+    elif answer in 'nN':
+        return False
+    elif default != None:
+        return default
+    else:
+        print "Invalid response: " + answer
+        return yes_no(default, question)
+
+def shorten_string(string, length): # {{{2
+    ''' shortens a string and uses "..." to show it's been shortened '''
+    if len(string) <= length:
+        return string
+
+    return string[:length-3] + '...'
+
+def is_comment(submission): # {{{2
     return isinstance(submission, praw.objects.Comment)
 
-def is_submission(submission):
+def is_submission(submission): # {{{2
     return isinstance(submission, praw.objects.Submission)
 
-def comment_str(comment):
+def comment_str(comment): # {{{2
     '''convert a comment to a string'''
-    comment_text = str(comment)
+    return (
+        shorten_string(unicode(comment), MAX_COMMENT_TEXT)
+        + ' :: /r/' + comment.subreddit.display_name)
 
-    if len(comment_text) > MAX_COMMENT_TEXT:
-        comment_text = comment_text[:MAX_COMMENT_TEXT-3] + '...'
-
-    context_link = comment.permalink + '?context=99'
-
-    return "{comment_text} :: {context_link}".format(**locals())
-
-def submission_str(submission):
+def submission_str(submission): # {{{2
     '''convert a submission to a string'''
-    return submission.title +' :: /r/' + submission.subreddit.display_name + ' :: ' + submission.url
+    subreddit = submission.subreddit.display_name
+    title     = shorten_string(submission.title, 40)
+    string    = title + ' :: /r/' + subreddit
 
-def praw_object_to_string(praw_object):
-    ''' only works on submissions and comments '''
+    if submission.is_self:
+        return string
+    else:
+        url = shorten_string(submission.url, 20)
+        return string + ' :: ' + url
+
+def praw_object_to_string(praw_object): # {{{2
+    ''' only works on submissions and comments
+
+    BE CAREFUL! Sometimes returns a Unicode string. Use str.encode.
+    '''
     if is_submission(praw_object):
         return submission_str(praw_object)
     elif is_comment(praw_object):
         return comment_str(praw_object)
 
-def print_all(submissions, file_=sys.stdout):
-    '''print all submissions'''
+def praw_object_url(praw_object): # {{{2
+    ''' returns a unicode url for the given submission or comment '''
+    if is_submission(praw_object):
+        return praw_object.short_link
+    elif is_comment(praw_object):
+        return praw_object.permalink + '?context=824545201'
+    else:
+        raise ValueError(
+            "praw_object_url only handles submissions and comments")
+
+def print_all(submissions, file_=sys.stdout): # {{{2
+    '''print all submissions DEPRECATED'''
     for i in submissions:
         try:
-            file_.write(praw_object_to_string(i)+'\n')
+            object_str = praw_object_to_string(i).encode(
+                encoding='ascii', errors='backslashreplace')
+
+            file_.write(object_str + '\n')
         except UnicodeEncodeError:
             print ('[Failed to .write() a submission/comment ({}) here:'
                 'UnicodeEncodeError]').format(str(i))
@@ -97,10 +148,19 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     def filter_items(self, f):
         self.old_items = self.items
-
-        # TODO: Test.
-        #self.items = [i for i in self.items if f(i)]
         self.items = filter(f, self.items)
+
+    def print_item(self, index, item=None):
+        if item == None:
+            item = self.items[index]
+
+        rjust_number = len(str(len(self.items)))
+        index_str    = str(index).rjust(rjust_number)
+
+        item_str = praw_object_to_string(item).encode(
+            encoding='ascii', errors='backslashreplace')
+
+        print '{index_str}: {item_str}'.format(**locals())
 
     # Undo and reset. {{{2
     def do_undo(self, arg):
@@ -210,7 +270,10 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     # Commands for filtering. {{{2
     def do_sub(self, arg):
-        '''sub <subreddit>: filter out anything not in <subreddit>, don't include /r/'''
+        '''
+        sub <subreddit>: filter out anything not in <subreddit>, don't
+        include /r/
+        '''
         target_sub = arg.split()[0].lower()
 
         self.filter_items(lambda x:
@@ -236,48 +299,56 @@ class PRAWToys(cmd.Cmd): # {{{1
             not is_comment(x) and x.over_18)
 
     def do_title(self, arg):
-        ''' title <regex>: filter out anything whose title doesn't match <regex>
+        '''
+        title <regex>: filter out anything whose title doesn't match <regex>
 
-            You can have spaces in your command, like "title asdf fdsa", but don't
-            put any quotation marks if you don't want them taken as literal characters!
+        You can have spaces in your command, like "title asdf fdsa", but don't
+        put any quotation marks if you don't want them taken as literal
+        characters!
 
-            Also implicitely filters out comments.
+        Also implicitely filters out comments.
         '''
         self.filter_items(lambda x:
             not is_comment(x) and re.search(arg, x.title)
         )
 
     def do_ntitle(self, arg):
-        ''' ntitle <regex>: filter out anything whose title matches <regex>
+        '''
+        ntitle <regex>: filter out anything whose title matches <regex>
 
-            You can have spaces in your command, like "title asdf fdsa", but don't
-            put any quotation marks if you don't want them taken as literal characters!
+        You can have spaces in your command, like "title asdf fdsa", but
+        don't put any quotation marks if you don't want them taken as
+        literal characters!
 
-            Also implicitely filters out comments.
+        Also implicitely filters out comments.
         '''
         self.filter_items(lambda x:
             not is_comment(x) and not re.search(arg, x.title)
         )
 
     def do_url(self, arg):
-        ''' url <regex>: filter out anything whose url doesn't match <regex>
+        '''
+        url <regex>: filter out anything whose url doesn't match <regex>
 
-            You can have spaces in your command, like "url asdf fdsa", but don't
-            put any quotation marks if you don't want them taken as literal characters!
+        You can have spaces in your command, like "url asdf fdsa", but
+        don't put any quotation marks if you don't want them taken as
+        literal characters!
 
-            Also implicitely filters out comments.
+        Also implicitely filters out comments.
         '''
         self.filter_items(lambda x:
             not is_comment(x) and re.search(arg, x.title)
         )
 
     def do_nurl(self, arg):
-        ''' nurl <regex>: filter out anything whose url matches <regex>
+        '''
+        nurl <regex>: filter out anything whose url matches <regex>
 
-            You can have spaces in your command, like "title asdf fdsa", but don't
-            put any quotation marks if you don't want them taken as literal characters!
+        You can have spaces in your command, like "title asdf fdsa", but don't
+        put any quotation marks if you don't want them taken as literal
+        characters!
 
-            Also implicitely filters out comments.
+        Also implicitely filters out comments.
         '''
         self.filter_items(lambda x:
             not is_comment(x) and not re.search(arg, x.title)
@@ -285,28 +356,34 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     # Commands for viewing list items. {{{2
     def do_ls(self, arg): # {{{3
-        '''ls [start [n=10]]: list items, with [start] list [n] items starting at [start]'''
-        #TODO: Something is wrong with start and n options.
+        '''
+        ls [start [n=10]]: list items, with [start] list [n] items starting at
+        [start]
+        '''
         args = arg.split()
 
-        try:
-            start = int(args[0])
-        except IndexError:
-            start = None
-        except ValueError:
-            print "That's not a number!"
-            return
+        to_print = self.items
 
-        try:
-            n = int(args[1])
-        except IndexError:
-            n = 10
-        except ValueError:
-            print "That's not a number!"
-            return
+        if len(args) > 0:
+            try:
+                start = int(args[0])
+            except ValueError:
+                print "got invalid <start> (not a number)"
+                return
 
-        print_all(
-            self.items if not start else self.items[start : start+n])
+            if len(args) > 1:
+                try:
+                    n = int(args[1])
+                except ValueError:
+                    print "got invalid <n> (not a number)"
+                    return
+
+                to_print = to_print[start : start+n]
+            else:
+                to_print = to_print[start:]
+
+        for i, v in enumerate(to_print):
+            self.print_item(i, v)
 
     def do_head(self, arg): # {{{3
         '''head [n=10]: show first [n] items'''
@@ -318,7 +395,8 @@ class PRAWToys(cmd.Cmd): # {{{1
             print "That's not a number!"
             return
 
-        print_all(self.items[:n])
+        for i, v in enumerate(self.items[:n]):
+            self.print_item(i, v)
 
     def do_tail(self, arg): # {{{3
         '''tail [n=10]: show last [n] items'''
@@ -330,7 +408,8 @@ class PRAWToys(cmd.Cmd): # {{{1
             print "That's not a number!"
             return
 
-        print_all(self.items[-n:])
+        for i, v in enumerate(self.items[-n:]):
+            self.print_item(i, v)
 
     def do_view_subs(self, arg): # {{{3
         '''view_subs: shows how many of the list items are from which sub'''
@@ -358,35 +437,51 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     def do_get_links(self, arg): # {{{3
         '''
-            get_links: generates an HTML file with all the links to everything
-            and opens it in your default browser.
+            get_links [sub]: generates an HTML file with all the links to
+            everything (or everything in a given sub) and opens it in your
+            default browser.
         '''
+        target_items = self.items
+        args = arg.split()
+
+        if len(args) > 0:
+            target_sub = args[0].lower()
+
+            filter_func = (lambda i:
+                i.subreddit.display_name.lower() == target_sub)
+
+            target_items = filter(filter_func, target_items)
+
         with open('urls.html', 'w') as html_file:
             html_file.write('<html><body>')
 
-            for item in self.items:
-                item_string = praw_object_to_string(item)
+            for item in target_items:
+                item_string = praw_object_to_string(item).encode(
+                    encoding='ascii', errors='xmlcharrefreplace')
 
-                if is_comment(item):
-                    item_url = item.permalink + '?context=824545201'
-                elif is_submission(item):
-                    item_url = item.short_link
-                else:
-                    assert False
+                item_url = praw_object_url(item).encode(
+                    'ascii', 'xmlcharrefreplace')
 
                 html_file.write(
                     '<a href="{item_url}">{item_string}</a><br>'.format(
-                        **locals())
+                        **locals()))
 
             html_file.write('</body></html>')
 
         webbrowser.open('file://' + os.getcwd() + '/urls.html')
+    do_gl = do_get_links
 
 
     # Commands for doing stuff with the items. {{{2
     def do_open(self, arg):
-        '''open: open all items using xdg-open'''
-        self.do_open_with( 'xdg-open ' + arg )
+        '''open: open all items using the webbrowser module'''
+        # TODO: Use webbrowser instead!
+        if len(self.items) >= 20:
+            continue_ = yes_no(False, ("You're about to open {} different tabs."
+                " Are you sure you want to continue?").format(len(self.items)))
+
+        for item in self.items:
+            webbrowser.open( praw_object(item) )
 
     def do_open_with(self, arg):
         '''open_with <command>: run command on all URLs'''
@@ -414,14 +509,15 @@ class PRAWToys(cmd.Cmd): # {{{1
             return
 
         file_ = open(filename, 'w')
-        print_all(self.items, file_)
+        print_all(self.items, file_) # TODO print_all deprecated
 
     def do_upvote(self, arg):
         # NOTE untested for comments
         '''upvote: upvote EVERYTHING'''
-        continue_ = raw_input("You're about to upvote EVERYTHING in the current list. Do you really want to continue? [yN]")
+        continue_ = yes_no(False, "You're about to upvote EVERYTHING in the"
+            " current list. Do you really want to continue?")
 
-        if continue_ in "yY":
+        if continue_:
             len_ = len(self.items)
 
             for k, v in enumerate(self.items):
@@ -436,9 +532,10 @@ class PRAWToys(cmd.Cmd): # {{{1
     def do_clear_vote(self, arg):
         # NOTE untested
         '''clear_vote: clear vote on EVERYTHING'''
-        continue_ = raw_input("You're about to clear your votes on EVERYTHING in the current list. Do you really want to continue? [yN]")
+        continue_ = yes_no("You're about to clear your votes on EVERYTHING"
+            " in the current list. Do you really want to continue? [yN]")
 
-        if continue_ in "yY":
+        if continue_:
             len_ = len(self.items)
 
             for k, v in enumerate(self.items):
