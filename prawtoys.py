@@ -1,12 +1,14 @@
 #!/usr/bin/python
 # vim: foldmethod=marker
-#TODO: Nodupes command, praw.objects.Submission has .__eq__() so == should work.
-#TODO: Only ask user for login if needed
-#TODO: head ls and tail should show indicies
-#TODO: Progress indicator when loading items.
-#TODO: Login through cmd.
-#TODO: nsub and sub could take multiple subreddit arguments.
-#TODO: self and nself. praw.object.Submission.is_self
+# NOTE: Anything that's been changed without testing will have U_NTESTED in the
+#       docstring. (example obscured slightly so search doesn't find it)
+#
+# TODO: Nodupes command, praw.objects.Submission has .__eq__() so == should work.
+# TODO: Only ask user for login if needed
+# TODO: head ls and tail should show indicies
+# TODO: Progress indicator when loading items.
+# TODO: Login through cmd.
+# TODO: login command inside of PRAWToys.
 
 # Imports. {{{1
 import praw
@@ -21,7 +23,7 @@ from pprint import pprint
 #import example_oauth_webserver
 
 # Constants and functions. {{{1
-VERSION = "PRAWToys 0.6.0"
+VERSION = "PRAWToys 0.7.0"
 
 # When displaying comments, how many characters should we show?
 MAX_COMMENT_TEXT = 80
@@ -118,6 +120,11 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.use_rawinput = not (
             callable(sys.stdout.write) and callable(sys.stdin.readline))
 
+        if not self.use_rawinput:
+            print "Looks like you don't have GNU readline installed. Oh, well."
+
+        print
+
         self.items = []
         self.reddit_session = reddit_session
 
@@ -145,6 +152,27 @@ class PRAWToys(cmd.Cmd): # {{{1
     def filter_items(self, f):
         self.old_items = self.items
         self.items = filter(f, self.items)
+
+    def get_items_from_subs(self, *subs):
+        '''given a list of subs, return all items from those subs UNTESTED'''
+        subs = [i.lower() for i in subs]
+        filter_func = lambda i: i.lower() in subs
+        return filter(filter_func, self.items)
+
+    def arg_to_matching_subs(self, subs_string=None):
+        '''
+        given a string like 'aww askreddit creepy', returns all items from those
+        subreddits. If no subs_string is given, or the subs_string is
+        empty/all whitespace, just return self.items.
+        UNTESTED
+        '''
+        if subs_string:
+            subs = subs_string.split()
+
+            if len(subs_string) > 0:
+                return self.get_items_from_subs(*subs)
+
+        return self.items
 
     def print_item(self, index, item=None):
         if item == None:
@@ -185,30 +213,30 @@ class PRAWToys(cmd.Cmd): # {{{1
             traceback.print_exception(*sys.exc_info())
 
     # Commands to add items. {{{2
-    def do_submission(self, arg):
+    def do_submission(self, arg): # {{{3
         '''submission: filter out all but links and self posts'''
         self.filter_items(is_submission)
     do_subs = do_submission
 
-    def do_comment(self, arg):
+    def do_comment(self, arg): # {{{3
         '''comment: filter out all but comments'''
         self.filter_items(is_comment)
     do_coms = do_comment
 
-    def do_saved(self, arg):
+    def do_saved(self, arg): # {{{3
         '''saved: get your saved items'''
         self.add_items(
             self.reddit_session.user.get_saved(limit=None)
         )
 
-    def do_mine(self, arg):
+    def do_mine(self, arg): # {{{3
         '''mine: get your own submitted items'''
         self.add_items(
               list(self.reddit_session.user.get_submitted(limit=None))
             + list(self.reddit_session.user.get_comments(limit=None))
         )
 
-    def do_user(self, arg):
+    def do_user(self, arg): # {{{3
         '''user <username>: get a user's submitted items'''
         user = self.reddit_session.get_redditor(arg.split()[0])
         self.add_items(
@@ -216,17 +244,17 @@ class PRAWToys(cmd.Cmd): # {{{1
             + list(user.get_comments(limit=None))
         )
 
-    def do_mysubs(self, arg):
+    def do_mysubs(self, arg): # {{{3
         '''mysubs: get your submissions'''
         self.add_items(
             list(self.reddit_session.user.get_submitted(limit=None)))
 
-    def do_mycoms(self, arg):
+    def do_mycoms(self, arg): # {{{3
         '''mycoms: get your comments'''
         self.add_items(
             list(self.reddit_session.user.get_comments(limit=None)))
 
-    def do_thread(self, arg):
+    def do_thread(self, arg): # {{{3
         '''thread <submission id> [n=10,000]: get <n> comments from thread. BUGGY'''
         #raise NotImplementedError
 
@@ -264,23 +292,53 @@ class PRAWToys(cmd.Cmd): # {{{1
             if type(i) != praw.objects.MoreComments
         )
 
+    def do_get_new(self, arg): # {{{3
+        # NOTE untested
+        '''get_new <subreddit> [<n=1000>]: get <n> submissions from /r/<subreddit>/new'''
+
+        try:
+            arg = arg.split()
+            subreddit = arg[0]
+        except IndexError:
+            print "No subreddit specified."
+            return
+
+        try:
+            n = int(arg[1])
+        except IndexError:
+            n = 1000
+        except ValueError:
+            print "Invalid number: " + repr(n)
+            return
+
+        print "Getting {n} submissions to /r/{subreddit}.".format(**locals())
+        sub = self.reddit_session.get_subreddit(subreddit)
+        # NOTE itertools.islice?
+        self.add_items(
+            sub.get_new(limit=n)
+        )
+
+
     # Commands for filtering. {{{2
     def do_sub(self, arg):
         '''
-        sub <subreddit>: filter out anything not in <subreddit>, don't
-        include /r/
+        sub <subreddit>...: filter out anything not in the listed subreddits,
+        don't include /r/
         '''
-        target_sub = arg.split()[0].lower()
+        target_subs = [i.lower() for i in arg.split()]
 
         self.filter_items(lambda x:
-            x.subreddit.display_name.lower() == target_sub)
+            x.subreddit.display_name.lower() in target_subs)
 
     def do_nsub(self, arg):
-        '''nsub <subreddit>: filter out anything in <subreddit>, don't include /r/'''
-        target_sub = arg.split()[0].lower()
+        '''
+        nsub <subreddit>: filter out anything in the listed subreddits, don't
+        include /r/
+        '''
+        target_subs = [i.lower() for i in arg.split()]
 
         self.filter_items(lambda x:
-            x.subreddit.display_name.lower() != target_sub)
+            x.subreddit.display_name.lower() not in target_subs)
 
     def do_sfw(self, arg):
         '''sfw: filter out anything nsfw'''
@@ -294,6 +352,14 @@ class PRAWToys(cmd.Cmd): # {{{1
             # need to check is_comment or we'll get AttributeError
             not is_comment(x) and x.over_18)
 
+    def do_self(self, arg):
+        '''self: filter out all but self-posts (not comments)'''
+        self.filter_items(lambda i: is_submission(i) and i.is_self)
+
+    def do_nself(self, arg):
+        '''nself: filter out all self-posts'''
+        self.filter_items(lambda i: is_comment(i) or not i.is_self)
+
     def do_title(self, arg):
         '''
         title <regex>: filter out anything whose title doesn't match <regex>
@@ -305,16 +371,15 @@ class PRAWToys(cmd.Cmd): # {{{1
         Also implicitely filters out comments.
         '''
         self.filter_items(lambda x:
-            not is_comment(x) and re.search(arg, x.title)
-        )
+            not is_comment(x) and re.search(arg, x.title))
 
     def do_ntitle(self, arg):
         '''
         ntitle <regex>: filter out anything whose title matches <regex>
 
-        You can have spaces in your command, like "title asdf fdsa", but
-        don't put any quotation marks if you don't want them taken as
-        literal characters!
+        You can have spaces in your command, like "ntitle asdf fdsa", but don't
+        put any quotation marks if you don't want them taken as literal
+        characters!
 
         Also implicitely filters out comments.
         '''
@@ -433,20 +498,12 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     def do_get_links(self, arg): # {{{3
         '''
-            get_links [sub]: generates an HTML file with all the links to
-            everything (or everything in a given sub) and opens it in your
-            default browser.
+            get_links [sub]...: generates an HTML file with all the links to
+            everything (or everything in a given subreddit(s)) and opens it in
+            your default browser.
+            UNTESTED
         '''
-        target_items = self.items
-        args = arg.split()
-
-        if len(args) > 0:
-            target_sub = args[0].lower()
-
-            filter_func = (lambda i:
-                i.subreddit.display_name.lower() == target_sub)
-
-            target_items = filter(filter_func, target_items)
+        target_items = self.arg_to_matching_subs(arg)
 
         with open('urls.html', 'w') as html_file:
             html_file.write('<html><body>')
@@ -470,29 +527,29 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     # Commands for doing stuff with the items. {{{2
     def do_open(self, arg):
-        '''open: open all items using the webbrowser module'''
-        # TODO: Use webbrowser instead!
-        if len(self.items) >= 20:
+        '''
+        open [sub]...: open all items using the webbrowser module. optionally
+        filter by sub(s)
+        '''
+
+        target_items = self.arg_to_matching_subs(arg)
+
+        if len(target_items) >= 20:
             continue_ = yes_no(False, ("You're about to open {} different tabs."
                 " Are you sure you want to continue?").format(len(self.items)))
 
-        for item in self.items:
-            webbrowser.open( praw_object(item) )
+        for item in target_items:
+            webbrowser.open( praw_object_url(item) )
 
     def do_open_with(self, arg):
-        '''open_with <command>: run command on all URLs'''
+        '''open_with <command>: run command on all URLs UNTESTED'''
         #TODO: This is a really ugly way to handle this.
-        def get_link(submission):
-            try:
-                return submission.url
-            except AttributeError:
-                return comment_str(submission)
 
         if arg == '':
             print 'No command specified!'
             return
 
-        for i in map(get_link, self.items):
+        for i in map(praw_object_to_string, self.items):
             # "2>/dev/null" pipes away stderr
             os.system('{arg} "{i}"'.format(**locals()))
 
@@ -526,8 +583,7 @@ class PRAWToys(cmd.Cmd): # {{{1
             print "Cancelled. Phew."
 
     def do_clear_vote(self, arg):
-        # NOTE untested
-        '''clear_vote: clear vote on EVERYTHING'''
+        '''clear_vote: clear vote on EVERYTHING - UNTESTED'''
         continue_ = yes_no("You're about to clear your votes on EVERYTHING"
             " in the current list. Do you really want to continue? [yN]")
 
@@ -543,32 +599,6 @@ class PRAWToys(cmd.Cmd): # {{{1
         else:
             print "Cancelled. Phew."
 
-    def do_get_new(self, arg):
-        # NOTE untested
-        '''get_new <subreddit> [<n=1000>]: get <n> submissions from /r/<subreddit>/new'''
-
-        try:
-            arg = arg.split()
-            subreddit = arg[0]
-        except IndexError:
-            print "No subreddit specified."
-            return
-
-        try:
-            n = int(arg[1])
-        except IndexError:
-            n = 1000
-        except ValueError:
-            print "Invalid number: " + repr(n)
-            return
-
-        print "Getting {n} submissions to /r/{subreddit}.".format(**locals())
-        sub = self.reddit_session.get_subreddit(subreddit)
-        # NOTE itertools.islice?
-        self.add_items(
-            sub.get_new(limit=n)
-        )
-
 # Init code. {{{1
 r = praw.Reddit(VERSION)
 print VERSION
@@ -580,6 +610,7 @@ if not login in 'Nn' or login == '':
     #r = example_oauth_webserver.get_r(VERSION)
 
     print "If everything worked, this should be your link karma: " + str(r.user.link_karma)
+    print
 
 try:
     PRAWToys(r).cmdloop()
