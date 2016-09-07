@@ -3,6 +3,10 @@
 # NOTE: Anything that's been changed without testing will have U_NTESTED in the
 #       docstring. (example obscured slightly so search doesn't find it)
 #
+# NOTE: Debug with the 'py' command.
+#
+# https://pythonhosted.org/cmd2/index.html
+#
 # TODO: Nodupes command, praw.objects.Submission has .__eq__() so == should work.
 # TODO: Only ask user for login if needed
 # TODO: head ls and tail should show indicies
@@ -12,7 +16,8 @@
 
 # Imports. {{{1
 import praw
-import cmd
+#import cmd
+import cmd2
 import os
 import re
 import sys
@@ -112,7 +117,7 @@ def print_all(submissions, file_=sys.stdout): # {{{2
             print ('[Failed to .write() a submission/comment ({}) here:'
                 'UnicodeEncodeError]').format(str(i))
 
-class PRAWToys(cmd.Cmd): # {{{1
+class PRAWToys(cmd2.Cmd): # {{{1
     prompt = '0> '
 
     def __init__(self, reddit_session, *args, **kwargs): # {{{2
@@ -120,7 +125,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.use_rawinput = not (
             callable(sys.stdout.write) and callable(sys.stdin.readline))
 
-        if not self.use_rawinput:
+        if self.use_rawinput:
             print "Looks like you don't have GNU readline installed. Oh, well."
 
         print
@@ -128,8 +133,9 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.items = []
         self.reddit_session = reddit_session
 
-        #  super() doesn't work on old-style classes like cmd.Cmd :(
-        cmd.Cmd.__init__(self, *args, **kwargs)
+        # super() doesn't work on old-style classes like cmd.Cmd :(
+        # TODO: What about cmd2.Cmd?
+        cmd2.Cmd.__init__(self, *args, **kwargs)
 
     # General settings. {{{2
     def emptyline(self): pass # disable empty line repeating the last command
@@ -156,7 +162,7 @@ class PRAWToys(cmd.Cmd): # {{{1
     def get_items_from_subs(self, *subs):
         '''given a list of subs, return all items from those subs UNTESTED'''
         subs = [i.lower() for i in subs]
-        filter_func = lambda i: i.lower() in subs
+        filter_func = lambda i: i.subreddit.display_name.lower() in subs
         return filter(filter_func, self.items)
 
     def arg_to_matching_subs(self, subs_string=None):
@@ -535,8 +541,11 @@ class PRAWToys(cmd.Cmd): # {{{1
         target_items = self.arg_to_matching_subs(arg)
 
         if len(target_items) >= 20:
-            continue_ = yes_no(False, ("You're about to open {} different tabs."
-                " Are you sure you want to continue?").format(len(self.items)))
+            yes_no_prompt = ("You're about to open {} different tabs. Are you"
+                " sure you want to continue?").format(len(target_items))
+
+            if not yes_no(False, yes_no_prompt):
+                return
 
         for item in target_items:
             webbrowser.open( praw_object_url(item) )
@@ -612,7 +621,11 @@ if not login in 'Nn' or login == '':
     print "If everything worked, this should be your link karma: " + str(r.user.link_karma)
     print
 
-try:
-    PRAWToys(r).cmdloop()
-except KeyboardInterrupt:
-    pass
+while True:
+    try:
+        PRAWToys(r).cmdloop()
+        break
+    except KeyboardInterrupt:
+        break
+    except Exception as err:
+        print 'Error:', err
