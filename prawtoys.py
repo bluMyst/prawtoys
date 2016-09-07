@@ -5,12 +5,8 @@
 #TODO: head ls and tail should show indicies
 #TODO: Progress indicator when loading items.
 #TODO: Login through cmd.
-#TODO: nsub and sub take multiple subreddit arguments.
+#TODO: nsub and sub could take multiple subreddit arguments.
 #TODO: self and nself. praw.object.Submission.is_self
-
-#TODO: do_* methods should error like this (python standard)
-#      print '*** error text here'
-#      return
 
 # Imports. {{{1
 import praw
