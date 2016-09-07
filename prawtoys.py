@@ -25,7 +25,7 @@ from pprint import pprint
 #import example_oauth_webserver
 
 # Constants and functions. {{{1
-VERSION = "PRAWToys 0.5.0"
+VERSION = "PRAWToys 0.6.0"
 
 # When displaying comments, how many characters should we show?
 MAX_COMMENT_TEXT = 80
