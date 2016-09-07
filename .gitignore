@@ -1,6 +1,9 @@
 # Vim swap files
 .*.swp
 
+# urls.html file used by prawtoys
+urls.html
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
