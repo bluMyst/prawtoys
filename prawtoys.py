@@ -13,6 +13,10 @@
 # TODO: Progress indicator when loading items.
 # TODO: Login through cmd.
 # TODO: login command inside of PRAWToys.
+# TODO: sfw and nsfw should filter out comments based on the thread type. Same
+#       for title and ntitle.
+# TODO: A better way to invert commands than separately defining 'self' and
+#       'nself.' A decorator or something.
 
 # Imports. {{{1
 import praw
@@ -238,30 +242,57 @@ class PRAWToys(cmd2.Cmd): # {{{1
             self.reddit_session.user.get_saved(limit=None)
         )
 
+    def do_user(self, arg): # {{{3
+        '''user <username> [limit=None]: get up to [limit] of a user's submitted items'''
+        # UNTESTED
+        args = arg.split()
+        user = self.reddit_session.get_redditor(arg.split()[0])
+
+        try:
+            limit = int(args[1])
+        except IndexError:
+            limit = None
+
+        # TODO: Update docstring depending on if this works:
+        self.add_items(list(user.get_overview(limit=limit)))
+
+    def do_user_comments(self, arg): # {{{3
+        '''user_comments <username> [limit=None]: get a user's comments'''
+        # UNTESTED
+        args = arg.split()
+        user = self.reddit_session.get_redditor(arg.split()[0])
+
+        try:
+            limit = int(args[1])
+        except IndexError:
+            limit = None
+
+        self.add_items(list( user.get_comments(limit=limit) ))
+
+    def do_user_submissions(self, arg): # {{{3
+        '''user_submissions <username> [limit=None]: get a user's submissions'''
+        # UNTESTED
+        args = arg.split()
+        user = self.reddit_session.get_redditor(arg.split()[0])
+
+        try:
+            limit = int(args[1])
+        except IndexError:
+            limit = None
+
+        self.add_items(list( user.get_submitted(limit=limit) ))
+
     def do_mine(self, arg): # {{{3
         '''mine: get your own submitted items'''
-        self.add_items(
-              list(self.reddit_session.user.get_submitted(limit=None))
-            + list(self.reddit_session.user.get_comments(limit=None))
-        )
+        self.do_user(self.reddit_session.user.name)
 
-    def do_user(self, arg): # {{{3
-        '''user <username>: get a user's submitted items'''
-        user = self.reddit_session.get_redditor(arg.split()[0])
-        self.add_items(
-              list(user.get_submitted(limit=None))
-            + list(user.get_comments(limit=None))
-        )
-
-    def do_mysubs(self, arg): # {{{3
+    def do_my_submissions(self, arg): # {{{3
         '''mysubs: get your submissions'''
-        self.add_items(
-            list(self.reddit_session.user.get_submitted(limit=None)))
+        self.do_user_submissions(self.reddit_session.user.name)
 
-    def do_mycoms(self, arg): # {{{3
+    def do_my_comments(self, arg): # {{{3
         '''mycoms: get your comments'''
-        self.add_items(
-            list(self.reddit_session.user.get_comments(limit=None)))
+        self.do_user_comments(self.reddit_session.user.name)
 
     def do_thread(self, arg): # {{{3
         '''thread <submission id> [n=10,000]: get <n> comments from thread. BUGGY'''
@@ -301,38 +332,38 @@ class PRAWToys(cmd2.Cmd): # {{{1
             if type(i) != praw.objects.MoreComments
         )
 
-    def do_get_new(self, arg): # {{{3
-        # NOTE untested
-        '''get_new <subreddit> [<n=1000>]: get <n> submissions from /r/<subreddit>/new'''
+    def do_get_from(self, arg): # {{{3
+        '''
+        get_from <subreddit> [n=1000] [sort=now]: get [n] submissions from
+        /r/<subreddit>, sorting by [sort]. [sort] can be 'hot', 'new', 'top',
+        'controversial', and maybe 'rising' (untested)
 
-        try:
-            arg = arg.split()
-            subreddit = arg[0]
-        except IndexError:
-            print "No subreddit specified."
-            return
+        UNTESTED. BUGGY?
+        '''
 
-        try:
-            n = int(arg[1])
-        except IndexError:
-            n = 1000
-        except ValueError:
-            print "Invalid number: " + repr(n)
-            return
+        args      = arg.split()
+        subreddit = args[0]
 
-        print "Getting {n} submissions to /r/{subreddit}.".format(**locals())
+        if len(args) > 1:
+            limit = int(args[1])
+        else:
+            limit = 1000
+
+        if len(args) > 2:
+            sort = args[2]
+        else:
+            sort = 'now'
+
         sub = self.reddit_session.get_subreddit(subreddit)
-        # NOTE itertools.islice?
-        self.add_items(
-            sub.get_new(limit=n)
-        )
+
+        self.add_items(sub.search('', limit=limit, sort=sort))
 
 
     # Commands for filtering. {{{2
     def do_sub(self, arg):
         '''
-        sub <subreddit>...: filter out anything not in the listed subreddits,
-        don't include /r/
+        sub <subreddit>...: filter out anything not in the listed subreddits.
+        Don't include /r/
         '''
         target_subs = [i.lower() for i in arg.split()]
 
@@ -341,7 +372,7 @@ class PRAWToys(cmd2.Cmd): # {{{1
 
     def do_nsub(self, arg):
         '''
-        nsub <subreddit>: filter out anything in the listed subreddits, don't
+        nsub <subreddit>: filter out anything in the listed subreddits. Don't
         include /r/
         '''
         target_subs = [i.lower() for i in arg.split()]
@@ -377,8 +408,12 @@ class PRAWToys(cmd2.Cmd): # {{{1
         put any quotation marks if you don't want them taken as literal
         characters!
 
+        Be careful, because '|', '<', and '>' are used by cmd2 to pipe
+        output into files. You can't even get away with '\|'.
+
         Also implicitely filters out comments.
         '''
+        # TODO: Fix piping issue. (see above)
         self.filter_items(lambda x:
             not is_comment(x) and re.search(arg, x.title))
 
@@ -390,33 +425,8 @@ class PRAWToys(cmd2.Cmd): # {{{1
         put any quotation marks if you don't want them taken as literal
         characters!
 
-        Also implicitely filters out comments.
-        '''
-        self.filter_items(lambda x:
-            not is_comment(x) and not re.search(arg, x.title)
-        )
-
-    def do_url(self, arg):
-        '''
-        url <regex>: filter out anything whose url doesn't match <regex>
-
-        You can have spaces in your command, like "url asdf fdsa", but
-        don't put any quotation marks if you don't want them taken as
-        literal characters!
-
-        Also implicitely filters out comments.
-        '''
-        self.filter_items(lambda x:
-            not is_comment(x) and re.search(arg, x.title)
-        )
-
-    def do_nurl(self, arg):
-        '''
-        nurl <regex>: filter out anything whose url matches <regex>
-
-        You can have spaces in your command, like "title asdf fdsa", but don't
-        put any quotation marks if you don't want them taken as literal
-        characters!
+        Be careful, because '|', '<', and '>' are used by cmd2 to pipe
+        output into files. You can't even get away with '\|'.
 
         Also implicitely filters out comments.
         '''
@@ -539,6 +549,7 @@ class PRAWToys(cmd2.Cmd): # {{{1
         '''
         open [sub]...: open all items using the webbrowser module. optionally
         filter by sub(s)
+        progress indicator UNTESTED
         '''
 
         target_items = self.arg_to_matching_subs(arg)
@@ -550,7 +561,10 @@ class PRAWToys(cmd2.Cmd): # {{{1
             if not yes_no(False, yes_no_prompt):
                 return
 
-        for item in target_items:
+        len_ = len(target_items)
+        rjust_num = len(str(len_))
+        for i, item in enumerate(target_items):
+            print '\r' + str(i).rjust(rjust_num) + '/' + str(len_),
             webbrowser.open( praw_object_url(item) )
 
     def do_open_with(self, arg):
