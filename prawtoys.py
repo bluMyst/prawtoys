@@ -29,12 +29,13 @@ from pprint import pprint
 
 # Constants and functions. {{{1
 VERSION = "PRAWToys 0.7.0"
+r = praw.Reddit(VERSION)
 
 # When displaying comments, how many characters should we show?
 MAX_COMMENT_TEXT = 80
 
 def yes_no(default, question): # {{{2
-    ''' default can be True, False, or None '''
+    ''' default can be True, False, or None UNTESTED '''
     if default == None:
         question += ' [yn]'
     elif default:
@@ -208,6 +209,8 @@ class PRAWToys(cmd2.Cmd): # {{{1
         x <command>: execute <command> as python code and pretty-print the
         result (if any)
         '''
+        # NOTE: Redundant with cmd2's py command. Might want to remove depending
+        #       on how pretty the printing of do_py is.
         try:
             pprint(eval(arg))
         except SyntaxError:
@@ -609,23 +612,24 @@ class PRAWToys(cmd2.Cmd): # {{{1
             print "Cancelled. Phew."
 
 # Init code. {{{1
-r = praw.Reddit(VERSION)
-print VERSION
+if __name__ == '__main__':
+    print VERSION
 
-login = raw_input('login? [Yn]')
-if not login in 'Nn' or login == '':
-    # TODO: Use OAuth or everything will be slowed down on purpose.
-    r.login(disable_warning=True)
-    #r = example_oauth_webserver.get_r(VERSION)
+    login = raw_input('login? [Yn]')
+    if not login in 'Nn' or login == '':
+        # TODO: Use OAuth or everything will be slowed down on purpose.
+        r.login(disable_warning=True)
+        #r = example_oauth_webserver.get_r(VERSION)
 
-    print "If everything worked, this should be your link karma: " + str(r.user.link_karma)
-    print
+        print "If everything worked, this should be your link karma: " + str(r.user.link_karma)
+        print
 
-while True:
-    try:
-        PRAWToys(r).cmdloop()
-        break
-    except KeyboardInterrupt:
-        break
-    except Exception as err:
-        print 'Error:', err
+    prawtoys = PRAWToys(r)
+    while True:
+        try:
+            prawtoys.cmdloop()
+            break
+        except KeyboardInterrupt:
+            break
+        except Exception as err:
+            print 'Error:', err
