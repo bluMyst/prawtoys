@@ -3,11 +3,10 @@
 # NOTE: Anything that's been changed without testing will have U_NTESTED in the
 #       docstring. (example obscured slightly so search doesn't find it)
 #
-# NOTE: Debug with the 'py' command.
-#
 # https://pythonhosted.org/cmd2/index.html
 #
-# TODO: Nodupes command, praw.objects.Submission has .__eq__() so == should work.
+# TODO: Nodupes command, praw.objects.Submission has .__eq__() so == should
+#       work. But test just to be sure.
 # TODO: Only ask user for login if needed
 # TODO: head ls and tail should show indicies
 # TODO: Progress indicator when loading items.
@@ -156,21 +155,21 @@ class PRAWToys(cmd2.Cmd): # {{{1
     do_exit = do_EOF
 
     # Internal utility methods. {{{2
-    def add_items(self, l):
+    def add_items(self, l): # {{{3
         self.old_items = self.items[:]
         self.items += list(l)
 
-    def filter_items(self, f):
+    def filter_items(self, f): # {{{3
         self.old_items = self.items
         self.items = filter(f, self.items)
 
-    def get_items_from_subs(self, *subs):
-        '''given a list of subs, return all items from those subs UNTESTED'''
+    def get_items_from_subs(self, *subs): # {{{3
+        '''given a list of subs, return all stored items from those subs'''
         subs = [i.lower() for i in subs]
         filter_func = lambda i: i.subreddit.display_name.lower() in subs
         return filter(filter_func, self.items)
 
-    def arg_to_matching_subs(self, subs_string=None):
+    def arg_to_matching_subs(self, subs_string=None): # {{{3
         '''
         given a string like 'aww askreddit creepy', returns all items from those
         subreddits. If no subs_string is given, or the subs_string is
@@ -185,7 +184,7 @@ class PRAWToys(cmd2.Cmd): # {{{1
 
         return self.items
 
-    def print_item(self, index, item=None):
+    def print_item(self, index, item=None): # {{{3
         if item == None:
             item = self.items[index]
 
@@ -198,12 +197,15 @@ class PRAWToys(cmd2.Cmd): # {{{1
         print '{index_str}: {item_str}'.format(**locals())
 
     # Undo and reset. {{{2
-    def do_undo(self, arg):
+    def do_undo(self, arg): # {{{3
         '''undo: undoes last command'''
-        self.items = self.old_items[:]
+        if hasattr(self, 'old_items'):
+            self.items = self.old_items[:]
+        else:
+            print 'No undo history found. Nothing to undo.'
     do_u = do_undo
 
-    def do_reset(self, arg):
+    def do_reset(self, arg): # {{{3
         '''reset: clear all items'''
         self.items = []
 
