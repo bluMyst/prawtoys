@@ -360,7 +360,7 @@ class PRAWToys(cmd2.Cmd): # {{{1
 
 
     # Commands for filtering. {{{2
-    def do_sub(self, arg):
+    def do_sub(self, arg): # {{{3
         '''
         sub <subreddit>...: filter out anything not in the listed subreddits.
         Don't include /r/
@@ -370,7 +370,7 @@ class PRAWToys(cmd2.Cmd): # {{{1
         self.filter_items(lambda x:
             x.subreddit.display_name.lower() in target_subs)
 
-    def do_nsub(self, arg):
+    def do_nsub(self, arg): # {{{3
         '''
         nsub <subreddit>: filter out anything in the listed subreddits. Don't
         include /r/
@@ -380,27 +380,27 @@ class PRAWToys(cmd2.Cmd): # {{{1
         self.filter_items(lambda x:
             x.subreddit.display_name.lower() not in target_subs)
 
-    def do_sfw(self, arg):
+    def do_sfw(self, arg): # {{{3
         '''sfw: filter out anything nsfw'''
         self.filter_items(lambda x:
             # need to check is_comment or we'll get AttributeError
             is_comment(x) or not x.over_18)
 
-    def do_nsfw(self, arg):
+    def do_nsfw(self, arg): # {{{3
         '''nsfw: filter out anything sfw and all comments'''
         self.filter_items(lambda x:
             # need to check is_comment or we'll get AttributeError
             not is_comment(x) and x.over_18)
 
-    def do_self(self, arg):
+    def do_self(self, arg): # {{{3
         '''self: filter out all but self-posts (not comments)'''
         self.filter_items(lambda i: is_submission(i) and i.is_self)
 
-    def do_nself(self, arg):
+    def do_nself(self, arg): # {{{3
         '''nself: filter out all self-posts'''
         self.filter_items(lambda i: is_comment(i) or not i.is_self)
 
-    def do_title(self, arg):
+    def do_title(self, arg): # {{{3
         '''
         title <regex>: filter out anything whose title doesn't match <regex>
 
@@ -413,11 +413,12 @@ class PRAWToys(cmd2.Cmd): # {{{1
 
         Also implicitely filters out comments.
         '''
-        # TODO: Fix piping issue. (see above)
+        # TODO: Fix piping issue. (see above) Also applies to ntitle.
+        #       title "foo|bar" works fine and so does title 'foo|bar'.
         self.filter_items(lambda x:
             not is_comment(x) and re.search(arg, x.title))
 
-    def do_ntitle(self, arg):
+    def do_ntitle(self, arg): # {{{3
         '''
         ntitle <regex>: filter out anything whose title matches <regex>
 
