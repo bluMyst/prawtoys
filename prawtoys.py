@@ -137,8 +137,7 @@ class PRAWToys(cmd2.Cmd): # {{{1
         self.items = []
         self.reddit_session = reddit_session
 
-        # super() doesn't work on old-style classes like cmd.Cmd :(
-        # TODO: What about cmd2.Cmd?
+        # No super() with old-style classes. :(
         cmd2.Cmd.__init__(self, *args, **kwargs)
 
     # General settings. {{{2

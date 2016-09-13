@@ -75,7 +75,7 @@ class GenericPRAWToysTest(unittest.TestCase): # {{{2
             self.assertTrue( f(i) )
 
 class TestOffline(GenericPRAWToysTest): # {{{2
-    TEST_DATA      = ['foo', 'bar', 'baz', 'foo', 'qux']
+    TEST_DATA      = ['foo', 'bar', 'baz', 'foo', 'qux', u'\xfcmlaut']
     BOOL_TEST_DATA = [True, True, False, True, False, False, True]
 
     def test_reset(self):
