@@ -16,8 +16,6 @@
 # TODO: login command inside of PRAWToys.
 # TODO: sfw and nsfw should filter out comments based on the thread type. Same
 #       for title and ntitle.
-# TODO: A better way to invert commands than separately defining 'self' and
-#       'nself.' A decorator or something.
 
 # Imports. {{{1
 import praw
@@ -169,14 +167,11 @@ class PRAWToys(cmd2.Cmd): # {{{1
 
     def filter_items(self, f, invert=False): # {{{3
         if invert:
-            old_f = f
-            def f(*args, **kwargs):
-                # If I don't do the old_f thing, the new f will call itself
-                # here and make an infinite recursion loop.
-                return not old_f(*args, **kwargs)
+            new_items = itertools.ifilterfalse(f, self.items)
+        else:
+            new_items = itertools.ifilter(f, self.items)
 
-        self.old_items = self.items
-        self.items = filter(f, self.items)
+        self.items = list(new_items)
 
     def get_items_from_subs(self, *subs): # {{{3
         '''given a list of subs, return all stored items from those subs'''
