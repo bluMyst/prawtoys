@@ -1,12 +1,15 @@
+# vim: foldmethod=marker
+# Imports. {{{1
 import unittest
 import prawtoys
 import praw
 
-class SubredditLookalike(object):
+# Lookalike classes. {{{1
+class SubredditLookalike(object): # {{{2
     def __init__(self, display_name):
         self.display_name = display_name
 
-class PostLookalike(object):
+class PostLookalike(object): # {{{2
     '''A generic for CommentLookalike and SubmissionLookalike'''
     def __init__(self, subreddit):
         if isinstance(subreddit, SubredditLookalike):
@@ -14,7 +17,7 @@ class PostLookalike(object):
         else:
             self.subreddit = SubredditLookalike(subreddit)
 
-class CommentLookalike(PostLookalike):
+class CommentLookalike(PostLookalike): # {{{2
     '''Designed to generate test data for PRAWToys to munch on.'''
     def __init__(self, text='foo', subreddit='foo', url='http://foo/',
             submission=None):
@@ -26,7 +29,7 @@ class CommentLookalike(PostLookalike):
     def __str__(self):
         return self.text
 
-class SubmissionLookalike(PostLookalike):
+class SubmissionLookalike(PostLookalike): # {{{2
     '''Designed to generate test data for PRAWToys to munch on.'''
     def __init__(self, title='foo', subreddit='foo', url='http://foo/',
             is_self=False, comments=[], over_18=False):
@@ -38,7 +41,7 @@ class SubmissionLookalike(PostLookalike):
         self.over_18    = over_18
         super(SubmissionLookalike, self).__init__(subreddit)
 
-# Monkey patch is_comment and is_submission to recognize the Lookalikes.
+# Monkey patch is_comment and is_submission to recognize the Lookalikes. {{{1
 is_comment_backup = prawtoys.is_comment
 def is_comment(submission):
     return (isinstance(submission, CommentLookalike) or
@@ -51,14 +54,17 @@ def is_submission(submission):
         is_submission_backup(submission))
 prawtoys.is_submission = is_submission
 
-class GenericPRAWToysTest(unittest.TestCase):
+# The actual tests. {{{1
+class GenericPRAWToysTest(unittest.TestCase): # {{{2
     def setUp(self):
+        ''' This gets run before every test_* function. '''
         if not hasattr(self, 'prawtoys'):
             self.prawtoys = prawtoys.PRAWToys(prawtoys.r)
         else:
             self.reset()
 
     def cmd(self, *args, **kwargs):
+        ''' Shortcut for self.prawtoys.onecmd '''
         return self.prawtoys.onecmd(*args, **kwargs)
 
     def reset(self):
@@ -68,8 +74,8 @@ class GenericPRAWToysTest(unittest.TestCase):
         for i in self.prawtoys.items:
             self.assertTrue( f(i) )
 
-class TestOffline(GenericPRAWToysTest):
-    TEST_DATA = ['foo', 'bar', 'baz', 'foo', 'qux']
+class TestOffline(GenericPRAWToysTest): # {{{2
+    TEST_DATA      = ['foo', 'bar', 'baz', 'foo', 'qux']
     BOOL_TEST_DATA = [True, True, False, True, False, False, True]
 
     def test_reset(self):
@@ -79,7 +85,7 @@ class TestOffline(GenericPRAWToysTest):
 
     def data_tester(self, data):
         def func(cmd_string, lambda_func):
-            self.prawtoys.items = data
+            self.prawtoys.items = data[:]
             self.cmd(cmd_string)
             self.assert_all_items(lambda_func)
 
@@ -89,11 +95,13 @@ class TestOffline(GenericPRAWToysTest):
         dt = self.data_tester([
             SubmissionLookalike(subreddit=i) for i in self.TEST_DATA])
 
+        # There's no reason to do display_name.lower() here, since the TEST_DATA
+        # is already all lowercase, but it's important to keep up the habit.
         dt('sub foo bar', lambda i:
-            i.subreddit.display_name in ['foo', 'bar'])
+            i.subreddit.display_name.lower() in ['foo', 'bar'])
 
         dt('nsub foo bar', lambda i:
-            i.subreddit.display_name not in ['foo', 'bar'])
+            i.subreddit.display_name.lower() not in ['foo', 'bar'])
 
     def test_title_ntitle(self):
         dt = self.data_tester([
@@ -110,11 +118,19 @@ class TestOffline(GenericPRAWToysTest):
             'bar' not in i.title and 'baz' not in i.title)
 
     def test_sfw_nsfw(self):
-        dt = self.data_tester([
-            SubmissionLookalike(over_18=i) for i in self.BOOL_TEST_DATA])
+        test_data = [
+            SubmissionLookalike(over_18=i) for i in self.BOOL_TEST_DATA]
 
-        dt('nsfw', lambda i: i.over_18)
-        dt('sfw', lambda i: not i.over_18)
+        test_data += [
+            CommentLookalike(i, i, i) for i in self.TEST_DATA]
+
+        dt = self.data_tester(test_data)
+
+        dt('nsfw', lambda i:
+            is_comment(i) or i.over_18)
+
+        dt('sfw', lambda i:
+            is_comment(i) or not i.over_18)
 
     def test_self_nself(self):
         dt = self.data_tester([
@@ -129,7 +145,14 @@ class TestOffline(GenericPRAWToysTest):
             hasattr(self.prawtoys, 'test_worked')
             and self.prawtoys.test_worked)
 
-class TestOnline(GenericPRAWToysTest):
+    def test_submission_and_comment(self):
+        test_data  = [CommentLookalike(i, i, i)    for i in self.TEST_DATA]
+        test_data += [SubmissionLookalike(i, i, i) for i in self.TEST_DATA]
+
+        self.data_tester(test_data)('submission', prawtoys.is_submission)
+        self.data_tester(test_data)('comment',    prawtoys.is_comment)
+
+class TestOnline(GenericPRAWToysTest): # {{{2
     def test_user(self):
         self.cmd('user winter_mutant 10')
         self.assertTrue(len(self.prawtoys.items) == 10)
@@ -161,7 +184,10 @@ class TestOnline(GenericPRAWToysTest):
             self.reset()
 
         creatively_named_function('get_from askreddit 10 top', 10, lambda i:
-            i.subreddit.display_name == 'askreddit')
+            i.subreddit.display_name.lower() == 'askreddit')
 
         creatively_named_function('get_from aww 9 new', 9, lambda i:
-            i.subreddit.display_name == 'aww')
+            i.subreddit.display_name.lower() == 'aww')
+
+        creatively_named_function('get_from awwnime 8 rising', 8, lambda i:
+            i.subreddit.display_name.lower() == 'awwnime')

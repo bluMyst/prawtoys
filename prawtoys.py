@@ -1,7 +1,9 @@
 #!/usr/bin/python
 # vim: foldmethod=marker
-# NOTE: Anything that's been changed without testing will have U_NTESTED in the
-#       docstring. (example obscured slightly so search doesn't find it)
+# Anything that's been changed without testing will have U_NTESTED in the
+# docstring. (example obscured slightly so search doesn't find it) Anything with
+# a comment saying "unit-tested" means that it's tested in tests.py and there
+# shouldn't be any bugs.
 #
 # https://pythonhosted.org/cmd2/index.html
 #
@@ -144,22 +146,35 @@ class PRAWToys(cmd2.Cmd): # {{{1
     # General settings. {{{2
     def emptyline(self): pass # disable empty line repeating the last command
 
-    def postcmd(self, r, l):
-        """
-        Change the prompt to show how many matches there are. Like URLToys.
-        """
-        self.prompt = str(len(self.items)) + '> '
+    def postcmd(self, r, l): # {{{3
+        ''' Runs after every command.
 
-    def do_EOF(self, arg):
+        Just updates the prompt to show the current number of items in
+        self.items.
+        '''
+        self.update_prompt()
+
+    def do_EOF(self, arg): # {{{3
         exit(0)
     do_exit = do_EOF
 
     # Internal utility methods. {{{2
+    def update_prompt(self): # {{{3
+        """ Change the prompt to show how many matches there are. """
+        self.prompt = str(len(self.items)) + '> '
+
     def add_items(self, l): # {{{3
         self.old_items = self.items[:]
         self.items += list(l)
 
-    def filter_items(self, f): # {{{3
+    def filter_items(self, f, invert=False): # {{{3
+        if invert:
+            old_f = f
+            def f(*args, **kwargs):
+                # If I don't do the old_f thing, the new f will call itself
+                # here and make an infinite recursion loop.
+                return not old_f(*args, **kwargs)
+
         self.old_items = self.items
         self.items = filter(f, self.items)
 
@@ -228,16 +243,6 @@ class PRAWToys(cmd2.Cmd): # {{{1
             traceback.print_exception(*sys.exc_info())
 
     # Commands to add items. {{{2
-    def do_submission(self, arg): # {{{3
-        '''submission: filter out all but links and self posts'''
-        self.filter_items(is_submission)
-    do_subs = do_submission
-
-    def do_comment(self, arg): # {{{3
-        '''comment: filter out all but comments'''
-        self.filter_items(is_comment)
-    do_coms = do_comment
-
     def do_saved(self, arg): # {{{3
         '''saved: get your saved items'''
         self.add_items(
@@ -246,7 +251,7 @@ class PRAWToys(cmd2.Cmd): # {{{1
 
     def do_user(self, arg): # {{{3
         '''user <username> [limit=None]: get up to [limit] of a user's submitted items'''
-        # UNTESTED
+        # Unit-tested.
         args = arg.split()
         user = self.reddit_session.get_redditor(arg.split()[0])
 
@@ -260,7 +265,7 @@ class PRAWToys(cmd2.Cmd): # {{{1
 
     def do_user_comments(self, arg): # {{{3
         '''user_comments <username> [limit=None]: get a user's comments'''
-        # UNTESTED
+        # Unit-tested.
         args = arg.split()
         user = self.reddit_session.get_redditor(arg.split()[0])
 
@@ -273,7 +278,7 @@ class PRAWToys(cmd2.Cmd): # {{{1
 
     def do_user_submissions(self, arg): # {{{3
         '''user_submissions <username> [limit=None]: get a user's submissions'''
-        # UNTESTED
+        # Unit-tested.
         args = arg.split()
         user = self.reddit_session.get_redditor(arg.split()[0])
 
@@ -339,9 +344,8 @@ class PRAWToys(cmd2.Cmd): # {{{1
         get_from <subreddit> [n=1000] [sort=now]: get [n] submissions from
         /r/<subreddit>, sorting by [sort]. [sort] can be 'hot', 'new', 'top',
         'controversial', and maybe 'rising' (untested)
-
-        UNTESTED. BUGGY?
         '''
+        # Unit-tested.
 
         args      = arg.split()
         subreddit = args[0]
@@ -362,45 +366,97 @@ class PRAWToys(cmd2.Cmd): # {{{1
 
 
     # Commands for filtering. {{{2
+    def do_submission(self, arg): # {{{3
+        '''submission: filter out all but links and self posts'''
+        # Unit-tested.
+        self.filter_items(is_submission)
+    do_subs = do_submission
+
+    def do_comment(self, arg): # {{{3
+        '''comment: filter out all but comments'''
+        # Unit-tested.
+        self.filter_items(is_comment)
+    do_coms = do_comment
+
+    def sub_nsub(self, invert, arg): # {{{3
+        ''' do_sub calls this with invert=False, and vice versa for do_nsub.
+
+        This function is basically to help with the whole "don't repeat
+        yourself" thing, since sub and nsub do pretty much the same thing,
+        except exactly the opposite.
+        '''
+        target_subs = [i.lower() for i in arg.split()]
+
+        self.filter_items(invert=invert, f=lambda item:
+            item.subreddit.display_name.lower() in target_subs)
+
     def do_sub(self, arg): # {{{3
         '''
         sub <subreddit>...: filter out anything not in the listed subreddits.
         Don't include /r/
         '''
-        target_subs = [i.lower() for i in arg.split()]
-
-        self.filter_items(lambda x:
-            x.subreddit.display_name.lower() in target_subs)
+        # Unit-tested.
+        self.sub_nsub(invert=False, arg=arg)
 
     def do_nsub(self, arg): # {{{3
         '''
         nsub <subreddit>: filter out anything in the listed subreddits. Don't
         include /r/
         '''
-        target_subs = [i.lower() for i in arg.split()]
+        # Unit-tested.
+        self.sub_nsub(invert=True, arg=arg)
 
-        self.filter_items(lambda x:
-            x.subreddit.display_name.lower() not in target_subs)
+    def sfw_nsfw(self, filter_sfw, arg): # {{{3
+        ''' See the docstring for sub_nsub. filter_sfw == True means filter out sfw.
+        Otherwise, filters out nsfw.
+        '''
+
+        def filter_func(item):
+            if is_comment(item):
+                return True
+
+            sfw = not item.over_18
+            return filter_sfw != sfw
+
+        self.filter_items(filter_func)
 
     def do_sfw(self, arg): # {{{3
-        '''sfw: filter out anything nsfw'''
-        self.filter_items(lambda x:
-            # need to check is_comment or we'll get AttributeError
-            is_comment(x) or not x.over_18)
+        '''sfw: filter out anything nsfw. Keeps comments.'''
+        self.sfw_nsfw(filter_sfw=False, arg=arg)
 
     def do_nsfw(self, arg): # {{{3
-        '''nsfw: filter out anything sfw and all comments'''
-        self.filter_items(lambda x:
-            # need to check is_comment or we'll get AttributeError
-            not is_comment(x) and x.over_18)
+        '''nsfw: filter out anything sfw. Keeps comments.'''
+        self.sfw_nsfw(filter_sfw=True, arg=arg)
+
+    def self_nself(self, invert, arg): # {{{3
+        ''' See the docstring for sub_nsub. invert==True will filter out all
+        self-posts.
+        '''
+        self.filter_items(lambda item:
+            is_comment(item) or (invert != item.is_self))
 
     def do_self(self, arg): # {{{3
-        '''self: filter out all but self-posts (not comments)'''
-        self.filter_items(lambda i: is_submission(i) and i.is_self)
+        '''self: filter out all but self-posts (and comments)'''
+        self.self_nself(invert=False, arg=arg)
 
     def do_nself(self, arg): # {{{3
         '''nself: filter out all self-posts'''
-        self.filter_items(lambda i: is_comment(i) or not i.is_self)
+        self.self_nself(invert=True, arg=arg)
+
+    def title_ntitle(self, invert, arg): # {{{3
+        ''' See the docstring for sub_nsub. invert==True means filter out
+        matches, not non-matches.
+        '''
+
+        def filter_func(item):
+            if is_comment(item):
+                return True
+
+            search_success = bool(re.search(arg, item.title))
+
+            return invert != search_success
+
+        self.filter_items(filter_func)
 
     def do_title(self, arg): # {{{3
         '''
@@ -415,10 +471,10 @@ class PRAWToys(cmd2.Cmd): # {{{1
 
         Also implicitely filters out comments.
         '''
-        # TODO: Fix piping issue. (see above) Also applies to ntitle.
-        #       title "foo|bar" works fine and so does title 'foo|bar'.
-        self.filter_items(lambda x:
-            not is_comment(x) and re.search(arg, x.title))
+        # TODO: Fix piping issue. (see docstring above) Also applies to ntitle.
+        #       title "foo|bar" works fine and so does title 'foo|bar'
+
+        self.title_ntitle(invert=False, arg=arg)
 
     def do_ntitle(self, arg): # {{{3
         '''
@@ -433,9 +489,7 @@ class PRAWToys(cmd2.Cmd): # {{{1
 
         Also implicitely filters out comments.
         '''
-        self.filter_items(lambda x:
-            not is_comment(x) and not re.search(arg, x.title)
-        )
+        self.title_ntitle(invert=True, arg=arg)
 
     # Commands for viewing list items. {{{2
     def do_ls(self, arg): # {{{3
