@@ -16,6 +16,7 @@
 # TODO: login command inside of PRAWToys.
 # TODO: sfw and nsfw should filter out comments based on the thread type. Same
 #       for title and ntitle.
+# TODO: Use OAuth or everything will be slowed down on purpose.
 
 # Imports. {{{1
 import praw
@@ -682,9 +683,7 @@ if __name__ == '__main__':
 
     login = raw_input('login? [Yn]')
     if not login in 'Nn' or login == '':
-        # TODO: Use OAuth or everything will be slowed down on purpose.
         r.login(disable_warning=True)
-        #r = example_oauth_webserver.get_r(VERSION)
 
         print "If everything worked, this should be your link karma: " + str(r.user.link_karma)
         print
