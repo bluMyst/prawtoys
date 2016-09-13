@@ -8,15 +8,15 @@
 # https://pythonhosted.org/cmd2/index.html
 #
 # TODO: Nodupes command, praw.objects.Submission has .__eq__() so == should
-#       work. But test just to be sure.
-# TODO: Only ask user for login if needed
-# TODO: head ls and tail should show indicies
+#       work. Seems to work after a bit of testing. Also, wasn't there a command
+#       that filtered out BOTH of the dupes? Might come in handy too.
+# TODO: Put login command in PRAWToys.
+# TODO: head, ls, and tail should show indicies
 # TODO: Progress indicator when loading items.
-# TODO: Login through cmd.
-# TODO: login command inside of PRAWToys.
 # TODO: sfw and nsfw should filter out comments based on the thread type. Same
 #       for title and ntitle.
 # TODO: Use OAuth or everything will be slowed down on purpose.
+# TODO: tests for the thread command.
 
 # Imports. {{{1
 import praw
