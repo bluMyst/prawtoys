@@ -30,5 +30,21 @@ See what subreddits gallowboob posts to most:
 
 The possibilities are endless!
 
+## Installing/running
+
+First of all, install Python 2 and praw. You can install praw by running:
+
+    python -m pip install praw
+
+Then, run prawtoys with:
+
+    python prawtoys.py
+
+You can also test prawtoys to make sure it's running properly:
+
+    python -m unittest -v tests
+
+## Notes
+
 Just a small warning: This script is a little bit slow if you give it too much
 to chew on, so be ready for that.
