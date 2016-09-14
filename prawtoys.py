@@ -1,16 +1,16 @@
 #!/usr/bin/python
 # vim: foldmethod=marker
+# Comments. {{{1
 # Anything that's been changed without testing will have U_NTESTED in the
 # docstring. (example obscured slightly so search doesn't find it) Anything with
 # a comment saying "unit-tested" means that it's tested in tests.py and there
 # shouldn't be any bugs.
 #
-# https://pythonhosted.org/cmd2/index.html
-#
 # TODO: Nodupes command, praw.objects.Submission has .__eq__() so == should
 #       work. Seems to work after a bit of testing. Also, wasn't there a command
 #       that filtered out BOTH of the dupes? Might come in handy too.
-# TODO: Put login command in PRAWToys.
+# TODO: Put login command in PRAWToys. All commands that need user to be logged
+#       in should fail gracefully.
 # TODO: head, ls, and tail should show indicies
 # TODO: Progress indicator when loading items.
 # TODO: sfw and nsfw should filter out comments based on the thread type. Same
@@ -20,8 +20,7 @@
 
 # Imports. {{{1
 import praw
-#import cmd
-import cmd2
+import cmd
 import os
 import re
 import sys
@@ -29,29 +28,28 @@ import itertools
 import traceback
 import webbrowser
 from pprint import pprint
-#import example_oauth_webserver
 
 # Constants and functions. {{{1
 VERSION = "PRAWToys 0.7.0"
 r = praw.Reddit(VERSION)
 
-# When displaying comments, how many characters should we show?
-MAX_COMMENT_TEXT = 80
+# When displaying comments/submissions, how many characters should we show?
+ASSUMED_CONSOLE_WIDTH = 80
 
 def yes_no(default, question): # {{{2
-    ''' default can be True, False, or None UNTESTED '''
+    ''' default can be True, False, or None '''
     if default == None:
-        question += ' [yn]'
+        yn_prompt = ' [yn]'
     elif default:
-        question += ' [Yn]'
+        yn_prompt = ' [Yn]'
     else:
-        question += ' [yN]'
+        yn_prompt = ' [yN]'
 
-    answer = raw_input(question)
+    answer = raw_input(question + yn_prompt).lower()
 
-    if answer in 'yY':
+    if answer == 'y':
         return True
-    elif answer in 'nN':
+    elif answer == 'n':
         return False
     elif default != None:
         return default
@@ -73,22 +71,23 @@ def is_submission(submission): # {{{2
     return isinstance(submission, praw.objects.Submission)
 
 def comment_str(comment): # {{{2
-    '''convert a comment to a string'''
-    return (
-        shorten_string(unicode(comment), MAX_COMMENT_TEXT)
-        + ' :: /r/' + comment.subreddit.display_name)
+    '''convert a comment to a string UNTESTED'''
+    comment_string = ' :: /r/' + comment.subreddit.display_name
+
+    comment_text = shorten_string(unicode(comment),
+        ASSUMED_CONSOLE_WIDTH - len(comment_string))
+
+    comment_text.replace('\n', '\\n')
+
+    comment_string = comment_text + comment_string
+    return comment_string
 
 def submission_str(submission): # {{{2
     '''convert a submission to a string'''
-    subreddit = submission.subreddit.display_name
-    title     = shorten_string(submission.title, 40)
-    string    = title + ' :: /r/' + subreddit
-
-    if submission.is_self:
-        return string
-    else:
-        url = shorten_string(submission.url, 20)
-        return string + ' :: ' + url
+    subreddit_string = ' :: /r/' + submission.subreddit.display_name
+    title  = shorten_string(submission.title,
+        ASSUMED_CONSOLE_WIDTH - len(subreddit_string))
+    return title + subreddit_string
 
 def praw_object_to_string(praw_object): # {{{2
     ''' only works on submissions and comments
@@ -122,7 +121,7 @@ def print_all(submissions, file_=sys.stdout): # {{{2
             print ('[Failed to .write() a submission/comment ({}) here:'
                 'UnicodeEncodeError]').format(str(i))
 
-class PRAWToys(cmd2.Cmd): # {{{1
+class PRAWToys(cmd.Cmd): # {{{1
     prompt = '0> '
 
     def __init__(self, reddit_session, *args, **kwargs): # {{{2
@@ -139,7 +138,7 @@ class PRAWToys(cmd2.Cmd): # {{{1
         self.reddit_session = reddit_session
 
         # No super() with old-style classes. :(
-        cmd2.Cmd.__init__(self, *args, **kwargs)
+        cmd.Cmd.__init__(self, *args, **kwargs)
 
     # General settings. {{{2
     def emptyline(self): pass # disable empty line repeating the last command
@@ -157,6 +156,100 @@ class PRAWToys(cmd2.Cmd): # {{{1
     do_exit = do_EOF
 
     # Internal utility methods. {{{2
+    def do_help(self, arg):
+        'List available commands with "help" or detailed help with "help cmd".'
+        # HACK: This is pretty much the cmd.Cmd.do_help method copied verbatim,
+        # with a few changes here-and-there.
+
+        # If they want help on a specific command, just pass them off to
+        # the original method.
+        if arg:
+            return cmd.Cmd.do_help(self, arg)
+
+        names = self.get_names()
+        misc_commands = []
+        undocumented_commands = []
+        help = {}
+
+        prawtoys_instance = self # For use inside the classes below.
+        class CommandCategory(object):
+            def __init__(self, header, command_names):
+                ''' command_names example: ['ls', 'foo', 'bar'] '''
+                self.header = header
+                self.command_names = command_names
+
+                for i in command_names:
+                    if not hasattr(prawtoys_instance, 'do_' + i):
+                        raise ValueError('CommandCategory called with '
+                            'nonexistent command: ' + i)
+
+        class CommandCategories(object):
+            def __init__(self, command_categories=[]):
+                self.command_categories = command_categories
+
+            def get_all_command_names(self):
+                command_names = []
+
+                for category in self.command_categories:
+                    command_names += category.command_names
+
+                return command_names
+
+        prawtoys_instance = self # for use inside the objects below
+        add_commands = CommandCategory('Commands for adding items', [
+            'saved', 'user', 'user_comments', 'user_submissions', 'mine',
+            'my_comments', 'my_submissions', 'thread', 'get_from'])
+
+        filter_commands = CommandCategory('Commands for filtering items.', [
+            'submission', 'comment', 'sub', 'nsub', 'sfw', 'nsfw', 'self',
+            'nself', 'title', 'ntitle'])
+
+        view_commands = CommandCategory('Commands for viewing list items.', [
+            'ls', 'head', 'tail', 'view_subs', 'vs', 'get_links', 'gl'])
+
+        interact_commands = CommandCategory(
+            'Commands for interacting with items.',
+            ['open', 'open_with', 'save_to', 'upvote', 'clear_vote'])
+
+        command_categories = CommandCategories(
+            [add_commands, filter_commands, view_commands, interact_commands])
+
+        for name in names:
+            if name[:5] == 'help_':
+                help[name[5:]] = 1
+
+        names.sort()
+
+        # There can be duplicates if routines overridden
+        prevname = ''
+        for name in names:
+            if name[:3] == 'do_':
+                if name == prevname:
+                    continue
+
+                prevname = name
+                command = name[3:]
+
+                if command in command_categories.get_all_command_names():
+                    continue
+
+                if command in help:
+                    misc_commands.append(command)
+                    del help[command]
+                elif getattr(self, name).__doc__:
+                    misc_commands.append(command)
+                else:
+                    undocumented_commands.append(command)
+
+        self.stdout.write("%s\n" % str(self.doc_leader))
+
+        for i in command_categories.command_categories:
+            self.print_topics(i.header, i.command_names, 15,80)
+
+        self.print_topics('Uncategorized commands.', misc_commands, 15,80)
+        self.print_topics(self.misc_header, help.keys(), 15,80)
+        self.print_topics(self.undoc_header, undocumented_commands, 15,80)
+
     def update_prompt(self): # {{{3
         """ Change the prompt to show how many matches there are. """
         self.prompt = str(len(self.items)) + '> '
@@ -194,12 +287,15 @@ class PRAWToys(cmd2.Cmd): # {{{1
 
         return self.items
 
-    def print_item(self, index, item=None): # {{{3
+    def print_item(self, index, item=None, index_rjust=None): # {{{3
+        ''' index_rjust is how far to rjust the index number '''
         if item == None:
             item = self.items[index]
 
-        rjust_number = len(str(len(self.items)))
-        index_str    = str(index).rjust(rjust_number)
+        if index_rjust == None:
+            index_rjust = len(str(len(self.items)))
+
+        index_str = str(index).rjust(index_rjust)
 
         item_str = praw_object_to_string(item).encode(
             encoding='ascii', errors='backslashreplace')
@@ -225,7 +321,7 @@ class PRAWToys(cmd2.Cmd): # {{{1
         x <command>: execute <command> as python code and pretty-print the
         result (if any)
         '''
-        # NOTE: Redundant with cmd2's py command. Might want to remove depending
+        # NOTE: Redundant with cmd's py command. Might want to remove depending
         #       on how pretty the printing of do_py is.
         try:
             pprint(eval(arg))
@@ -289,11 +385,11 @@ class PRAWToys(cmd2.Cmd): # {{{1
         self.do_user(self.reddit_session.user.name)
 
     def do_my_submissions(self, arg): # {{{3
-        '''mysubs: get your submissions'''
+        '''my_submissions: get your submissions'''
         self.do_user_submissions(self.reddit_session.user.name)
 
     def do_my_comments(self, arg): # {{{3
-        '''mycoms: get your comments'''
+        '''my_coments: get your comments'''
         self.do_user_comments(self.reddit_session.user.name)
 
     def do_thread(self, arg): # {{{3
@@ -336,9 +432,13 @@ class PRAWToys(cmd2.Cmd): # {{{1
 
     def do_get_from(self, arg): # {{{3
         '''
-        get_from <subreddit> [n=1000] [sort=now]: get [n] submissions from
+        get_from <subreddit> [n=1000] [sort=hot]: get [n] submissions from
         /r/<subreddit>, sorting by [sort]. [sort] can be 'hot', 'new', 'top',
         'controversial', and maybe 'rising' (untested)
+
+        You can set [n] to 'none' or 'all' (case insensitive) and you'll get
+        EVERYTHING from the chosen subreddit. This is obviously going to take
+        awhile, depending on the subreddit. 
         '''
         # Unit-tested.
 
@@ -346,14 +446,17 @@ class PRAWToys(cmd2.Cmd): # {{{1
         subreddit = args[0]
 
         if len(args) > 1:
-            limit = int(args[1])
+            if args[1].lower() in ['none', 'all']:
+                limit = None
+            else:
+                limit = int(args[1])
         else:
             limit = 1000
 
         if len(args) > 2:
             sort = args[2]
         else:
-            sort = 'now'
+            sort = 'hot'
 
         sub = self.reddit_session.get_subreddit(subreddit)
 
@@ -365,13 +468,11 @@ class PRAWToys(cmd2.Cmd): # {{{1
         '''submission: filter out all but links and self posts'''
         # Unit-tested.
         self.filter_items(is_submission)
-    do_subs = do_submission
 
     def do_comment(self, arg): # {{{3
         '''comment: filter out all but comments'''
         # Unit-tested.
         self.filter_items(is_comment)
-    do_coms = do_comment
 
     def sub_nsub(self, invert, arg): # {{{3
         ''' do_sub calls this with invert=False, and vice versa for do_nsub.
@@ -461,9 +562,6 @@ class PRAWToys(cmd2.Cmd): # {{{1
         put any quotation marks if you don't want them taken as literal
         characters!
 
-        Be careful, because '|', '<', and '>' are used by cmd2 to pipe
-        output into files. You can't even get away with '\|'.
-
         Also implicitely filters out comments.
         '''
         # TODO: Fix piping issue. (see docstring above) Also applies to ntitle.
@@ -479,9 +577,6 @@ class PRAWToys(cmd2.Cmd): # {{{1
         put any quotation marks if you don't want them taken as literal
         characters!
 
-        Be careful, because '|', '<', and '>' are used by cmd2 to pipe
-        output into files. You can't even get away with '\|'.
-
         Also implicitely filters out comments.
         '''
         self.title_ntitle(invert=True, arg=arg)
@@ -491,57 +586,50 @@ class PRAWToys(cmd2.Cmd): # {{{1
         '''
         ls [start [n=10]]: list items, with [start] list [n] items starting at
         [start]
+
+        UNTESTED
         '''
         args = arg.split()
 
-        to_print = self.items
+        to_print = list( enumerate(self.items) )
 
         if len(args) > 0:
-            try:
-                start = int(args[0])
-            except ValueError:
-                print "got invalid <start> (not a number)"
-                return
+            start = int(args[0])
+            to_print = to_print[start:]
 
             if len(args) > 1:
-                try:
-                    n = int(args[1])
-                except ValueError:
-                    print "got invalid <n> (not a number)"
-                    return
+                n = int(args[1])
+                to_print = to_print[:n]
 
-                to_print = to_print[start : start+n]
-            else:
-                to_print = to_print[start:]
-
-        for i, v in enumerate(to_print):
-            self.print_item(i, v)
+        index_rjust = len(str(
+            max(index for index, item in to_print)))
+        for index, item in to_print:
+            self.print_item(index, item, index_rjust)
 
     def do_head(self, arg): # {{{3
         '''head [n=10]: show first [n] items'''
-        try:
-            n = int(arg.split()[0])
-        except IndexError:
+        args = arg.split()
+        if len(args) > 0:
+            n = int(args[0])
+        else:
             n = 10
-        except ValueError:
-            print "That's not a number!"
-            return
 
-        for i, v in enumerate(self.items[:n]):
-            self.print_item(i, v)
+        self.do_ls('0 ' + str(n))
+
+        #to_print = list(enumerate(self.items))[:n]
+        #for i, v in enumerate(self.items[:n]):
+        #    self.print_item(i, v)
 
     def do_tail(self, arg): # {{{3
         '''tail [n=10]: show last [n] items'''
-        try:
-            n = int(arg.split()[0])
-        except IndexError:
+        args = arg.split()
+        if len(args) > 0:
+            n = int(args[0])
+        else:
             n = 10
-        except ValueError:
-            print "That's not a number!"
-            return
 
-        for i, v in enumerate(self.items[-n:]):
-            self.print_item(i, v)
+        start = len(self.items) - n
+        self.do_ls( str(start) + ' ' + str(n) )
 
     def do_view_subs(self, arg): # {{{3
         '''view_subs: shows how many of the list items are from which sub'''
@@ -565,14 +653,13 @@ class PRAWToys(cmd2.Cmd): # {{{1
         for sub, number in frequency_by_sub:
             print '{number} : /r/{sub}'.format(sub=sub,
                     number=str(number).rjust(max_number_length))
-    do_vs = do_view_subs
+    do_vs = do_view_subs # {{{3
 
     def do_get_links(self, arg): # {{{3
         '''
             get_links [sub]...: generates an HTML file with all the links to
             everything (or everything in a given subreddit(s)) and opens it in
             your default browser.
-            UNTESTED
         '''
         target_items = self.arg_to_matching_subs(arg)
 
@@ -593,11 +680,11 @@ class PRAWToys(cmd2.Cmd): # {{{1
             html_file.write('</body></html>')
 
         webbrowser.open('file://' + os.getcwd() + '/urls.html')
-    do_gl = do_get_links
+    do_gl = do_get_links # {{{3
 
 
     # Commands for doing stuff with the items. {{{2
-    def do_open(self, arg):
+    def do_open(self, arg): # {{{3
         '''
         open [sub]...: open all items using the webbrowser module. optionally
         filter by sub(s)
@@ -619,7 +706,7 @@ class PRAWToys(cmd2.Cmd): # {{{1
             print '\r' + str(i).rjust(rjust_num) + '/' + str(len_),
             webbrowser.open( praw_object_url(item) )
 
-    def do_open_with(self, arg):
+    def do_open_with(self, arg): # {{{3
         '''open_with <command>: run command on all URLs UNTESTED'''
         #TODO: This is a really ugly way to handle this.
 
@@ -631,7 +718,7 @@ class PRAWToys(cmd2.Cmd): # {{{1
             # "2>/dev/null" pipes away stderr
             os.system('{arg} "{i}"'.format(**locals()))
 
-    def do_save_to(self, arg):
+    def do_save_to(self, arg): # {{{3
         '''save_to <file>: save URLs to file'''
         try:
             filename = arg.split()[0]
@@ -642,11 +729,12 @@ class PRAWToys(cmd2.Cmd): # {{{1
         file_ = open(filename, 'w')
         print_all(self.items, file_) # TODO print_all deprecated
 
-    def do_upvote(self, arg):
+    def do_upvote(self, arg): # {{{3
         # NOTE untested for comments
-        '''upvote: upvote EVERYTHING'''
-        continue_ = yes_no(False, "You're about to upvote EVERYTHING in the"
-            " current list. Do you really want to continue?")
+        '''upvote: upvote EVERYTHING in the current list'''
+
+        print "You're about to upvote EVERYTHING in the current list."
+        continue_ = yes_no(False, "Do you really want to continue?")
 
         if continue_:
             len_ = len(self.items)
@@ -660,8 +748,8 @@ class PRAWToys(cmd2.Cmd): # {{{1
         else:
             print "Cancelled. Phew."
 
-    def do_clear_vote(self, arg):
-        '''clear_vote: clear vote on EVERYTHING - UNTESTED'''
+    def do_clear_vote(self, arg): # {{{3
+        'clear_vote: clear vote on EVERYTHING in the current list - UNTESTED'
         continue_ = yes_no("You're about to clear your votes on EVERYTHING"
             " in the current list. Do you really want to continue? [yN]")
 
@@ -679,13 +767,13 @@ class PRAWToys(cmd2.Cmd): # {{{1
 
 # Init code. {{{1
 if __name__ == '__main__':
+    import traceback
     print VERSION
 
-    login = raw_input('login? [Yn]')
-    if not login in 'Nn' or login == '':
+    if yes_no(False, 'login?'):
         r.login(disable_warning=True)
-
-        print "If everything worked, this should be your link karma: " + str(r.user.link_karma)
+        print("If everything worked, this should be your link karma:",
+            r.user.link_karma)
         print
 
     prawtoys = PRAWToys(r)
@@ -696,4 +784,4 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             break
         except Exception as err:
-            print 'Error:', err
+            traceback.print_exc()
