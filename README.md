@@ -3,7 +3,7 @@
 Based on the syntax of Perl's URLToys. Used to filter, interact with, and play
 with reddit comments and submissions.
 
-Get the 10 top sfw posts from AskReddit, and open them in the browser:
+Get the 10 top posts from AskReddit, and open them in the browser:
 
     0> get_from AskReddit 10 top
     10> open
