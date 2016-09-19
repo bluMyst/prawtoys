@@ -12,6 +12,7 @@
 # TODO: Put login command in PRAWToys. All commands that need user to be logged
 #       in should fail gracefully.
 # TODO: head, ls, and tail should show indicies
+# TODO: Remove ("rm"?) command that takes indicies.
 # TODO: Progress indicator when loading items.
 # TODO: sfw and nsfw should filter out comments based on the thread type. Same
 #       for title and ntitle.
@@ -580,6 +581,13 @@ class PRAWToys(cmd.Cmd): # {{{1
         Also implicitely filters out comments.
         '''
         self.title_ntitle(invert=True, arg=arg)
+
+    def do_rm(self, arg): # {{{3
+        '''
+        rm <index>...: NOT WORKING YET
+        '''
+        # TODO
+        raise NotImplemented
 
     # Commands for viewing list items. {{{2
     def do_ls(self, arg): # {{{3
