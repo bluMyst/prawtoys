@@ -700,19 +700,30 @@ class PRAWToys(cmd.Cmd): # {{{1
         '''
 
         target_items = self.arg_to_matching_subs(arg)
+        target_items_len = len(target_items)
 
-        if len(target_items) >= 20:
+        if target_items_len >= 20:
             yes_no_prompt = ("You're about to open {} different tabs. Are you"
-                " sure you want to continue?").format(len(target_items))
+                " sure you want to continue?").format(target_items_len)
 
             if not yes_no(False, yes_no_prompt):
                 return
 
-        len_ = len(target_items)
-        rjust_num = len(str(len_))
+        def progress(item_index, items_len, rjust_num):
+            # TODO: More descriptive name.
+            item_num = str(item_index + 1).rjust(rjust_num)
+            items_len = str(items_len)
+            print '\r{item_num}/{items_len}'.format(**locals()),
+
+        rjust_num = len(str(target_items_len))
+        progress(0, target_items_len, rjust_num)
+
         for i, item in enumerate(target_items):
-            print '\r' + str(i).rjust(rjust_num) + '/' + str(len_),
+            item_num = str(i + 1).rjust(rjust_num)
+            progress(i, target_items_len, rjust_num)
             webbrowser.open( praw_object_url(item) )
+
+        print
 
     def do_open_with(self, arg): # {{{3
         '''open_with <command>: run command on all URLs UNTESTED'''
