@@ -9,16 +9,14 @@
 # TODO: Nodupes command, praw.objects.Submission has .__eq__() so == should
 #       work. Seems to work after a bit of testing. Also, wasn't there a command
 #       that filtered out BOTH of the dupes? Might come in handy too.
-# TODO: Put login command in PRAWToys.
 # TODO: All commands that need user to be logged in should fail gracefully.
-# TODO: Make a remove ("rm"?) command that takes indicies.
 # TODO: Progress indicator when loading items. Is this even possible? If not,
 #       just have one thread making a pretty loading animation while the other
 #       thread is waiting on the server.
 # TODO: sfw and nsfw should filter out comments based on the thread type. Same
 #       for title and ntitle.
 # TODO: Use OAuth or everything will be slowed down on purpose.
-# TODO: tests for the thread command.
+# TODO: unittests for the thread command.
 
 # Imports. {{{1
 import praw
@@ -357,7 +355,6 @@ class PRAWToys(cmd.Cmd): # {{{1
         except IndexError:
             limit = None
 
-        # TODO: Update docstring depending on if this works:
         self.add_items(list(user.get_overview(limit=limit)))
 
     def do_user_comments(self, arg): # {{{3
@@ -581,8 +578,6 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         Also implicitely filters out comments.
         '''
-        # TODO: Fix piping issue. (see docstring above) Also applies to ntitle.
-        #       title "foo|bar" works fine and so does title 'foo|bar'
 
         self.title_ntitle(invert=False, arg=arg)
 
@@ -749,18 +744,6 @@ class PRAWToys(cmd.Cmd): # {{{1
         ahto_lib.progress_map(
             (lambda i: webbrowser.open( praw_object_url(i) )),
             target_items)
-
-    def do_open_with(self, arg): # {{{3
-        '''open_with <command>: run command on all URLs UNTESTED'''
-        #TODO: This is a really ugly way to handle this.
-
-        if arg == '':
-            print 'No command specified!'
-            return
-
-        for i in map(praw_object_to_string, self.items):
-            # "2>/dev/null" pipes away stderr
-            os.system('{arg} "{i}"'.format(**locals()))
 
     def do_save_to(self, arg): # {{{3
         '''save_to <file>: save URLs to file'''
