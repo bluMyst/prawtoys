@@ -18,6 +18,8 @@
 #       for title and ntitle.
 # TODO: Use OAuth or everything will be slowed down on purpose.
 # TODO: tests for the thread command.
+# TODO: The function 'progress' from do_open isn't used in do_upvote or
+#       do_clear_vote. Don't repeat yourself!
 
 # Imports. {{{1
 import praw
@@ -30,7 +32,7 @@ import traceback
 import webbrowser
 from pprint import pprint
 
-# Constants and functions. {{{1
+# Constants and functions and stuff. {{{1
 VERSION = "PRAWToys 0.7.0"
 r = praw.Reddit(VERSION)
 
@@ -121,6 +123,38 @@ def print_all(submissions, file_=sys.stdout): # {{{2
         except UnicodeEncodeError:
             print ('[Failed to .write() a submission/comment ({}) here:'
                 'UnicodeEncodeError]').format(str(i))
+
+class ProgressMapper(object): # {{{2
+    """ Use this to print 7/10 style progress indicators.
+
+    Use the 'with' keyword.
+    """
+    def __init__(self, items_len):
+        self.items_len = items_len
+        self.rjust_num = len(str(items_len))
+        self(-1)
+
+    def __enter__(self):
+        self(-1)
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        print
+
+    def __call__(self, item_index):
+        item_num  = str(item_index + 1).rjust(self.rjust_num)
+        print '\r{item_num}/{self.items_len}'.format(**locals()),
+
+def progress_map(f, l):
+    """
+    Map a function to a list, and print a 7/10 style progress indicator
+    while you're working.
+    """
+
+    with ProgressMapper(len(l)) as progress_mapper:
+        for i, v in enumerate(l):
+            f(v)
+            progress_mapper(i)
 
 class PRAWToys(cmd.Cmd): # {{{1
     prompt = '0> '
@@ -710,21 +744,9 @@ class PRAWToys(cmd.Cmd): # {{{1
             if not yes_no(False, yes_no_prompt):
                 return
 
-        def progress(item_index, items_len, rjust_num):
-            # TODO: More descriptive name.
-            item_num = str(item_index + 1).rjust(rjust_num)
-            items_len = str(items_len)
-            print '\r{item_num}/{items_len}'.format(**locals()),
-
-        rjust_num = len(str(target_items_len))
-        progress(0, target_items_len, rjust_num)
-
-        for i, item in enumerate(target_items):
-            item_num = str(i + 1).rjust(rjust_num)
-            progress(i, target_items_len, rjust_num)
-            webbrowser.open( praw_object_url(item) )
-
-        print
+        progress_map(
+            (lambda i: webbrowser.open( praw_object_url(i) )),
+            target_items)
 
     def do_open_with(self, arg): # {{{3
         '''open_with <command>: run command on all URLs UNTESTED'''
@@ -757,14 +779,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         continue_ = yes_no(False, "Do you really want to continue?")
 
         if continue_:
-            len_ = len(self.items)
-
-            for k, v in enumerate(self.items):
-                print "\r{k}/{len_}".format(**locals()),
-
-                v.upvote()
-
-            print ""
+            progress_map( (lambda i: i.upvote()), self.items )
         else:
             print "Cancelled. Phew."
 
@@ -774,14 +789,7 @@ class PRAWToys(cmd.Cmd): # {{{1
             " in the current list. Do you really want to continue? [yN]")
 
         if continue_:
-            len_ = len(self.items)
-
-            for k, v in enumerate(self.items):
-                print "\r{k}/{len_}".format(**locals()),
-
-                v.clear_vote()
-
-            print ""
+            progress_map( (lambda i: i.clear_vote()), self.items )
         else:
             print "Cancelled. Phew."
 
