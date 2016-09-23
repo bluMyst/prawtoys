@@ -43,34 +43,55 @@ def is_comment(submission): # {{{2
 def is_submission(submission): # {{{2
     return isinstance(submission, praw.objects.Submission)
 
-def comment_str(comment): # {{{2
-    '''convert a comment to a string'''
+def comment_str(comment, characters_needed=0): # {{{2
+    '''
+    convert a comment to a string
+
+    characters_needed is for code that wants to print comment_str with other
+    stuff on the same line. For example:
+
+    123: What did you just fucking... :: /r/circlejerk
+
+    This would be 5 characters off, normally, but if you set characters_needed
+    to 5, it'll be completely perfect.
+    '''
+    max_width = ASSUMED_CONSOLE_WIDTH - characters_needed
+
     comment_string = ' :: /r/' + comment.subreddit.display_name
 
     comment_text = ahto_lib.shorten_string(unicode(comment),
-        ASSUMED_CONSOLE_WIDTH - len(comment_string))
+        max_width - len(comment_string))
 
     comment_text.replace('\n', '\\n')
 
     comment_string = comment_text + comment_string
     return comment_string
 
-def submission_str(submission): # {{{2
-    '''convert a submission to a string'''
+def submission_str(submission, characters_needed=0): # {{{2
+    '''
+    convert a submission to a string
+
+    see comment_str for explanation of characters_needed
+    '''
+    max_width = ASSUMED_CONSOLE_WIDTH - characters_needed
     subreddit_string = ' :: /r/' + submission.subreddit.display_name
-    title  = ahto_lib.shorten_string(submission.title,
-        ASSUMED_CONSOLE_WIDTH - len(subreddit_string))
+
+    title = ahto_lib.shorten_string(submission.title,
+        max_width - len(subreddit_string))
+
     return title + subreddit_string
 
-def praw_object_to_string(praw_object): # {{{2
+def praw_object_to_string(praw_object, characters_needed=0): # {{{2
     ''' only works on submissions and comments
 
     BE CAREFUL! Sometimes returns a Unicode string. Use str.encode.
+
+    See comment_str for explanation of how characters_needed works.
     '''
     if is_submission(praw_object):
-        return submission_str(praw_object)
+        return submission_str(praw_object, characters_needed)
     elif is_comment(praw_object):
-        return comment_str(praw_object)
+        return comment_str(praw_object, characters_needed)
 
 def praw_object_url(praw_object): # {{{2
     ''' returns a unicode url for the given submission or comment '''
@@ -182,7 +203,7 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         interact_commands = CommandCategory(
             'Commands for interacting with items.',
-            ['open', 'open_with', 'save_to', 'upvote', 'clear_vote'])
+            ['open', 'save_to', 'upvote', 'clear_vote'])
 
         command_categories = CommandCategories(
             [add_commands, filter_commands, view_commands, interact_commands])
@@ -270,7 +291,7 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         index_str = str(index).rjust(index_rjust)
 
-        item_str = praw_object_to_string(item).encode(
+        item_str = praw_object_to_string(item, index_rjust+2).encode(
             encoding='ascii', errors='backslashreplace')
 
         print '{index_str}: {item_str}'.format(**locals())
@@ -738,25 +759,39 @@ class PRAWToys(cmd.Cmd): # {{{1
 
 
     # Commands for doing stuff with the items. {{{2
-    def do_open(self, arg): # {{{3
-        '''
-        open [sub]...: open all items using the webbrowser module. optionally
-        filter by sub(s)
-        '''
+    def open(self, index_or_item): # {{{3
+        if type(index_or_item) == int:
+            item = self.items[index_or_item]
+        else:
+            item = index_or_item
 
-        target_items = self.arg_to_matching_subs(arg)
-        target_items_len = len(target_items)
+        webbrowser.open( praw_object_url(item) )
 
-        if target_items_len >= 20:
+    def open_all(self, indicies_andor_items): # {{{3
+        if len(indicies_andor_items) >= 5:
             yes_no_prompt = ("You're about to open {} different tabs. Are you"
                 " sure you want to continue?").format(target_items_len)
 
             if not ahto_lib.yes_no(False, yes_no_prompt):
                 return
+        elif len(indicies_andor_items) <= 0:
+            return
 
-        ahto_lib.progress_map(
-            (lambda i: webbrowser.open( praw_object_url(i) )),
-            target_items)
+        ahto_lib.progress_map(self.open, indicies_andor_items)
+
+    def do_open(self, arg): # {{{3
+        '''
+        open [sub]...: open all items using the webbrowser module. optionally
+        filter by sub(s)
+        '''
+        self.open_all(self.arg_to_matching_subs(arg))
+
+    def do_open_index(self, arg): # {{{3
+        '''open_index <index>...: open item(s) by index'''
+        args = [int(i) for i in arg.split()]
+        target_items = [self.items[i] for i in args]
+
+        self.open_all(target_items)
 
     def do_save_to(self, arg): # {{{3
         '''save_to <file>: save URLs to file'''
@@ -785,8 +820,9 @@ class PRAWToys(cmd.Cmd): # {{{1
     @logged_in_command # do_clear_vote {{{3
     def do_clear_vote(self, arg):
         'clear_vote: clear vote on EVERYTHING in the current list - UNTESTED'
-        continue_ = ahto_lib.yes_no("You're about to clear your votes on EVERYTHING"
-            " in the current list. Do you really want to continue? [yN]")
+        continue_ = ahto_lib.yes_no(False, "You're about to clear your votes on"
+            " EVERYTHING in the current list. Do you really want to"
+            " continue?")
 
         if continue_:
             ahto_lib.progress_map( (lambda i: i.clear_vote()), self.items )
