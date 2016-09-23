@@ -9,11 +9,10 @@
 # TODO: Nodupes command, praw.objects.Submission has .__eq__() so == should
 #       work. Seems to work after a bit of testing. Also, wasn't there a command
 #       that filtered out BOTH of the dupes? Might come in handy too.
-# TODO: Put login command in PRAWToys. All commands that need user to be logged
-#       in should fail gracefully.
-# TODO: head, ls, and tail should show indicies
-# TODO: Remove ("rm"?) command that takes indicies.
-# TODO: Progress indicator when loading items.
+# TODO: Put login command in PRAWToys.
+# TODO: All commands that need user to be logged in should fail gracefully.
+# TODO: Make a remove ("rm"?) command that takes indicies.
+# TODO: Progress indicator when loading items. Is this even possible?
 # TODO: sfw and nsfw should filter out comments based on the thread type. Same
 #       for title and ntitle.
 # TODO: Use OAuth or everything will be slowed down on purpose.
@@ -32,9 +31,6 @@ from pprint import pprint
 import ahto_lib
 
 # Constants and functions and stuff. {{{1
-VERSION = "PRAWToys 0.7.0"
-r = praw.Reddit(VERSION)
-
 # When displaying comments/submissions, how many characters should we show?
 ASSUMED_CONSOLE_WIDTH = 80
 
@@ -97,19 +93,19 @@ def print_all(submissions, file_=sys.stdout): # {{{2
 
 class PRAWToys(cmd.Cmd): # {{{1
     prompt = '0> '
+    VERSION = "PRAWToys 1.0.0"
 
-    def __init__(self, reddit_session, *args, **kwargs): # {{{2
+    def __init__(self, *args, **kwargs): # {{{2
         # Don't use raw input if we can use the better alternative. (readline)
         self.use_rawinput = not (
             callable(sys.stdout.write) and callable(sys.stdin.readline))
 
         if self.use_rawinput:
             print "Looks like you don't have GNU readline installed. Oh, well."
-
-        print
+            print
 
         self.items = []
-        self.reddit_session = reddit_session
+        self.reddit_session = praw.Reddit(self.VERSION)
 
         # No super() with old-style classes. :(
         cmd.Cmd.__init__(self, *args, **kwargs)
@@ -277,6 +273,27 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         print '{index_str}: {item_str}'.format(**locals())
 
+    def logged_in_command(f): # {{{3
+        """ A decorator for commands that need the user to be logged in.
+
+        Checks if the user is logged in. If so, runs the function. If not,
+        prints an error and returns.
+
+        Since decorators are run on methods before there's any 'self' to speak
+        of, this decorator doesn't take 'self' as an argument. If it did, it
+        wouldn't work.
+        """
+
+        def new_f(self, *args, **kwargs):
+            if (not hasattr(self.reddit_session, 'user')
+                    or not self.reddit_session.user):
+                print 'You need to be logged in first. Try typing "help login".'
+                return
+
+            f(self, *args, **kwargs)
+
+        return new_f
+
     # Undo and reset. {{{2
     def do_undo(self, arg): # {{{3
         '''undo: undoes last command'''
@@ -308,12 +325,25 @@ class PRAWToys(cmd.Cmd): # {{{1
         except:
             traceback.print_exception(*sys.exc_info())
 
+    def do_login(self, arg): # {{{2
+        """ login [username]: log in to your reddit account """
+        args = arg.split()
+
+        if len(args) > 0:
+            username = args[0]
+        else:
+            username = None
+
+        self.reddit_session.login(username, disable_warning=True)
+        print "If everything worked, this should be your link karma:",
+        print self.reddit_session.user.link_karma
+
     # Commands to add items. {{{2
-    def do_saved(self, arg): # {{{3
+    @logged_in_command # do_saved {{{3
+    def do_saved(self, arg):
         '''saved: get your saved items'''
         self.add_items(
-            self.reddit_session.user.get_saved(limit=None)
-        )
+            self.reddit_session.user.get_saved(limit=None))
 
     def do_user(self, arg): # {{{3
         '''user <username> [limit=None]: get up to [limit] of a user's submitted items'''
@@ -355,16 +385,27 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         self.add_items(list( user.get_submitted(limit=limit) ))
 
-    def do_mine(self, arg): # {{{3
+    @logged_in_command # do_mine {{{3
+    def do_mine(self, arg):
         '''mine: get your own submitted items'''
         self.do_user(self.reddit_session.user.name)
 
-    def do_my_submissions(self, arg): # {{{3
+    @logged_in_command # do_my_submissions {{{3
+    def do_my_submissions(self, arg):
         '''my_submissions: get your submissions'''
+        if not hasattr(self.reddit_session, 'user'):
+            print 'You need to be logged in first.'
+            return
+
         self.do_user_submissions(self.reddit_session.user.name)
 
-    def do_my_comments(self, arg): # {{{3
+    @logged_in_command # do_my_comments {{{3
+    def do_my_comments(self, arg):
         '''my_coments: get your comments'''
+        if not hasattr(self.reddit_session, 'user'):
+            print 'You need to be logged in first.'
+            return
+
         self.do_user_comments(self.reddit_session.user.name)
 
     def do_thread(self, arg): # {{{3
@@ -571,6 +612,9 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         UNTESTED
         '''
+        if len(self.items) == 0:
+            return
+
         args = arg.split()
 
         to_print = list( enumerate(self.items) )
@@ -710,7 +754,8 @@ class PRAWToys(cmd.Cmd): # {{{1
         file_ = open(filename, 'w')
         print_all(self.items, file_) # TODO print_all deprecated
 
-    def do_upvote(self, arg): # {{{3
+    @logged_in_command # do_upvote {{{3
+    def do_upvote(self, arg):
         # NOTE untested for comments
         '''upvote: upvote EVERYTHING in the current list'''
 
@@ -722,7 +767,8 @@ class PRAWToys(cmd.Cmd): # {{{1
         else:
             print "Cancelled. Phew."
 
-    def do_clear_vote(self, arg): # {{{3
+    @logged_in_command # do_clear_vote {{{3
+    def do_clear_vote(self, arg):
         'clear_vote: clear vote on EVERYTHING in the current list - UNTESTED'
         continue_ = ahto_lib.yes_no("You're about to clear your votes on EVERYTHING"
             " in the current list. Do you really want to continue? [yN]")
@@ -735,20 +781,14 @@ class PRAWToys(cmd.Cmd): # {{{1
 # Init code. {{{1
 if __name__ == '__main__':
     import traceback
-    print VERSION
 
-    if ahto_lib.yes_no(False, 'login?'):
-        r.login(disable_warning=True)
-        print "If everything worked, this should be your link karma:",
-        print r.user.link_karma
-        print
-
-    prawtoys = PRAWToys(r)
+    prawtoys = PRAWToys()
     while True:
         try:
             prawtoys.cmdloop()
             break
         except KeyboardInterrupt:
+            # TODO: This doesn't work. Nothing gets printed.
             print "Ctrl-C detected. Bye!"
             break
         except Exception as err:

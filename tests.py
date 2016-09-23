@@ -59,7 +59,7 @@ class GenericPRAWToysTest(unittest.TestCase): # {{{2
     def setUp(self):
         ''' This gets run before every test_* function. '''
         if not hasattr(self, 'prawtoys'):
-            self.prawtoys = prawtoys.PRAWToys(prawtoys.r)
+            self.prawtoys = prawtoys.PRAWToys()
         else:
             self.reset()
 
