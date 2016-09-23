@@ -41,7 +41,7 @@ def is_submission(submission): # {{{2
     return isinstance(submission, praw.objects.Submission)
 
 def comment_str(comment): # {{{2
-    '''convert a comment to a string UNTESTED'''
+    '''convert a comment to a string'''
     comment_string = ' :: /r/' + comment.subreddit.display_name
 
     comment_text = ahto_lib.shorten_string(unicode(comment),
@@ -248,7 +248,6 @@ class PRAWToys(cmd.Cmd): # {{{1
         given a string like 'aww askreddit creepy', returns all items from those
         subreddits. If no subs_string is given, or the subs_string is
         empty/all whitespace, just return self.items.
-        UNTESTED
         '''
         if subs_string:
             subs = subs_string.split()
@@ -609,8 +608,6 @@ class PRAWToys(cmd.Cmd): # {{{1
         '''
         ls [start [n=10]]: list items, with [start] list [n] items starting at
         [start]
-
-        UNTESTED
         '''
         if len(self.items) == 0:
             return
@@ -714,7 +711,6 @@ class PRAWToys(cmd.Cmd): # {{{1
         '''
         open [sub]...: open all items using the webbrowser module. optionally
         filter by sub(s)
-        progress indicator UNTESTED
         '''
 
         target_items = self.arg_to_matching_subs(arg)
