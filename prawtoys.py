@@ -12,7 +12,9 @@
 # TODO: Put login command in PRAWToys.
 # TODO: All commands that need user to be logged in should fail gracefully.
 # TODO: Make a remove ("rm"?) command that takes indicies.
-# TODO: Progress indicator when loading items. Is this even possible?
+# TODO: Progress indicator when loading items. Is this even possible? If not,
+#       just have one thread making a pretty loading animation while the other
+#       thread is waiting on the server.
 # TODO: sfw and nsfw should filter out comments based on the thread type. Same
 #       for title and ntitle.
 # TODO: Use OAuth or everything will be slowed down on purpose.
@@ -597,11 +599,21 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.title_ntitle(invert=True, arg=arg)
 
     def do_rm(self, arg): # {{{3
-        '''
-        rm <index>...: NOT WORKING YET
-        '''
-        # TODO
-        raise NotImplemented
+        '''rm <index>...: remove items by index'''
+        indicies = map(int, arg.split())
+
+        items_len = len(self.items)
+        for i in indicies:
+            if i < 0 or i > items_len-1:
+                print "Out of range:", i
+                return
+
+        self.old_items = self.items[:]
+
+        for i in indicies:
+            self.items[i] = None
+
+        self.items = [i for i in self.items if i != None]
 
     # Commands for viewing list items. {{{2
     def do_ls(self, arg): # {{{3
@@ -677,6 +689,17 @@ class PRAWToys(cmd.Cmd): # {{{1
             print '{number} : /r/{sub}'.format(sub=sub,
                     number=str(number).rjust(max_number_length))
     do_vs = do_view_subs # {{{3
+
+    def do_lsub(self, arg): # {{{3
+        '''lsub <sub>...: show all items from the given sub(s)'''
+        subs = arg.split()
+        items_with_indicies = enumerate(self.items)
+        items_with_indicies = [(i, v) for i, v in items_with_indicies if
+            v.subreddit.display_name.lower() in subs]
+
+        rjust = len(str(max(i for i, v in items_with_indicies)))
+        for i, v in items_with_indicies:
+            self.print_item(i, v, rjust)
 
     def do_get_links(self, arg): # {{{3
         '''
