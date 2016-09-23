@@ -117,7 +117,7 @@ def print_all(submissions, file_=sys.stdout): # {{{2
 
 class PRAWToys(cmd.Cmd): # {{{1
     prompt = '0> '
-    VERSION = "PRAWToys 1.0.0"
+    VERSION = "PRAWToys 1.0.2"
 
     def __init__(self, *args, **kwargs): # {{{2
         # Don't use raw input if we can use the better alternative. (readline)
@@ -768,13 +768,14 @@ class PRAWToys(cmd.Cmd): # {{{1
         webbrowser.open( praw_object_url(item) )
 
     def open_all(self, indicies_andor_items): # {{{3
-        if len(indicies_andor_items) >= 5:
+        len_ = len(indicies_andor_items)
+        if len_ >= 5:
             yes_no_prompt = ("You're about to open {} different tabs. Are you"
-                " sure you want to continue?").format(target_items_len)
+                " sure you want to continue?").format(len_)
 
             if not ahto_lib.yes_no(False, yes_no_prompt):
                 return
-        elif len(indicies_andor_items) <= 0:
+        elif len_ <= 0:
             return
 
         ahto_lib.progress_map(self.open, indicies_andor_items)
@@ -792,6 +793,8 @@ class PRAWToys(cmd.Cmd): # {{{1
         target_items = [self.items[i] for i in args]
 
         self.open_all(target_items)
+
+    do_oi = do_open_index # {{{3
 
     def do_save_to(self, arg): # {{{3
         '''save_to <file>: save URLs to file'''
