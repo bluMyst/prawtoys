@@ -802,6 +802,7 @@ if __name__ == '__main__':
             prawtoys.cmdloop()
             break
         except KeyboardInterrupt:
+            print "Ctrl-C detected. Bye!"
             break
         except Exception as err:
             traceback.print_exc()
