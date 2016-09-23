@@ -157,7 +157,7 @@ class PRAWToys(cmd.Cmd): # {{{1
     do_exit = do_EOF
 
     # Internal utility methods. {{{2
-    def do_help(self, arg):
+    def do_help(self, arg): # {{{3
         'List available commands with "help" or detailed help with "help cmd".'
         # HACK: This is pretty much the cmd.Cmd.do_help method copied verbatim,
         # with a few changes here-and-there.
@@ -265,6 +265,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         else:
             new_items = itertools.ifilter(f, self.items)
 
+        self.old_items = self.items
         self.items = list(new_items)
 
     def get_items_from_subs(self, *subs): # {{{3
