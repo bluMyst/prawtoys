@@ -1,12 +1,16 @@
 # prawtoys
 
-Based on the syntax of Perl's URLToys. Used to filter, interact with, and play
-with reddit comments and submissions.
+## The swiss army knife of karma whoring.
+
+prawtoys is a utility based on the syntax of URLToys. You can use it to filter,
+interact with, and play with reddit comments and submissions.
 
 Get the 10 top posts from AskReddit, and open them in the browser:
 
     0> get_from AskReddit 10 top
     10> open
+    10/10
+    10>
 
 Upvote every non-self-post in /r/free\_karma:
 
