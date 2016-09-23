@@ -780,8 +780,8 @@ if __name__ == '__main__':
 
     if yes_no(False, 'login?'):
         r.login(disable_warning=True)
-        print("If everything worked, this should be your link karma:",
-            r.user.link_karma)
+        print "If everything worked, this should be your link karma:",
+        print r.user.link_karma
         print
 
     prawtoys = PRAWToys(r)
