@@ -19,6 +19,7 @@
 #       for title and ntitle.
 # TODO: Use OAuth or everything will be slowed down on purpose.
 # TODO: unittests for the thread command.
+# TODO: unittests for the rm command.
 
 # Imports. {{{1
 import praw
@@ -309,7 +310,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.items = []
 
     # Debug commands. {{{2
-    def do_x(self, arg):
+    def do_x(self, arg): # {{{3
         '''
         x <command>: execute <command> as python code and pretty-print the
         result (if any)
@@ -338,6 +339,16 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.reddit_session.login(username, disable_warning=True)
         print "If everything worked, this should be your link karma:",
         print self.reddit_session.user.link_karma
+
+    def do_width(self, arg): # {{{2
+        """width [width]: set or view console width"""
+        global ASSUMED_CONSOLE_WIDTH
+        args = arg.split()
+
+        if len(args) > 0:
+            ASSUMED_CONSOLE_WIDTH = int(args[0])
+        else:
+            print "width =", ASSUMED_CONSOLE_WIDTH
 
     # Commands to add items. {{{2
     @logged_in_command # do_saved {{{3
