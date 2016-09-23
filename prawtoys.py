@@ -1,10 +1,12 @@
 #!/usr/bin/python
 # vim: foldmethod=marker
 # Comments. {{{1
-# Anything that's been changed without testing will have U_NTESTED in the
-# docstring. (example obscured slightly so search doesn't find it) Anything with
-# a comment saying "unit-tested" means that it's tested in tests.py and there
-# shouldn't be any bugs.
+# Anything that's been changed without testing will have U_NTESTED* in the
+# docstring. Anything with a comment saying "unit-tested" means that it's
+# tested in tests.py and there shouldn't be any unseen bugs lurking around.
+#
+# * Example slightly obscured so that ctrl-f (or your text editor's equivalent)
+#   won't get confused and find a false positive.
 #
 # TODO: Nodupes command, praw.objects.Submission has .__eq__() so == should
 #       work. Seems to work after a bit of testing. Also, wasn't there a command
