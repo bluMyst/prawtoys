@@ -18,8 +18,6 @@
 #       for title and ntitle.
 # TODO: Use OAuth or everything will be slowed down on purpose.
 # TODO: tests for the thread command.
-# TODO: The function 'progress' from do_open isn't used in do_upvote or
-#       do_clear_vote. Don't repeat yourself!
 
 # Imports. {{{1
 import praw
@@ -31,6 +29,7 @@ import itertools
 import traceback
 import webbrowser
 from pprint import pprint
+import ahto_lib
 
 # Constants and functions and stuff. {{{1
 VERSION = "PRAWToys 0.7.0"
@@ -38,34 +37,6 @@ r = praw.Reddit(VERSION)
 
 # When displaying comments/submissions, how many characters should we show?
 ASSUMED_CONSOLE_WIDTH = 80
-
-def yes_no(default, question): # {{{2
-    ''' default can be True, False, or None '''
-    if default == None:
-        yn_prompt = ' [yn]'
-    elif default:
-        yn_prompt = ' [Yn]'
-    else:
-        yn_prompt = ' [yN]'
-
-    answer = raw_input(question + yn_prompt).lower()
-
-    if answer == 'y':
-        return True
-    elif answer == 'n':
-        return False
-    elif default != None:
-        return default
-    else:
-        print "Invalid response: " + answer
-        return yes_no(default, question)
-
-def shorten_string(string, length): # {{{2
-    ''' shortens a string and uses "..." to show it's been shortened '''
-    if len(string) <= length:
-        return string
-
-    return string[:length-3] + '...'
 
 def is_comment(submission): # {{{2
     return isinstance(submission, praw.objects.Comment)
@@ -77,7 +48,7 @@ def comment_str(comment): # {{{2
     '''convert a comment to a string UNTESTED'''
     comment_string = ' :: /r/' + comment.subreddit.display_name
 
-    comment_text = shorten_string(unicode(comment),
+    comment_text = ahto_lib.shorten_string(unicode(comment),
         ASSUMED_CONSOLE_WIDTH - len(comment_string))
 
     comment_text.replace('\n', '\\n')
@@ -88,7 +59,7 @@ def comment_str(comment): # {{{2
 def submission_str(submission): # {{{2
     '''convert a submission to a string'''
     subreddit_string = ' :: /r/' + submission.subreddit.display_name
-    title  = shorten_string(submission.title,
+    title  = ahto_lib.shorten_string(submission.title,
         ASSUMED_CONSOLE_WIDTH - len(subreddit_string))
     return title + subreddit_string
 
@@ -123,38 +94,6 @@ def print_all(submissions, file_=sys.stdout): # {{{2
         except UnicodeEncodeError:
             print ('[Failed to .write() a submission/comment ({}) here:'
                 'UnicodeEncodeError]').format(str(i))
-
-class ProgressMapper(object): # {{{2
-    """ Use this to print 7/10 style progress indicators.
-
-    Use the 'with' keyword.
-    """
-    def __init__(self, items_len):
-        self.items_len = items_len
-        self.rjust_num = len(str(items_len))
-        self(-1)
-
-    def __enter__(self):
-        self(-1)
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        print
-
-    def __call__(self, item_index):
-        item_num  = str(item_index + 1).rjust(self.rjust_num)
-        print '\r{item_num}/{self.items_len}'.format(**locals()),
-
-def progress_map(f, l):
-    """
-    Map a function to a list, and print a 7/10 style progress indicator
-    while you're working.
-    """
-
-    with ProgressMapper(len(l)) as progress_mapper:
-        for i, v in enumerate(l):
-            f(v)
-            progress_mapper(i)
 
 class PRAWToys(cmd.Cmd): # {{{1
     prompt = '0> '
@@ -741,10 +680,10 @@ class PRAWToys(cmd.Cmd): # {{{1
             yes_no_prompt = ("You're about to open {} different tabs. Are you"
                 " sure you want to continue?").format(target_items_len)
 
-            if not yes_no(False, yes_no_prompt):
+            if not ahto_lib.yes_no(False, yes_no_prompt):
                 return
 
-        progress_map(
+        ahto_lib.progress_map(
             (lambda i: webbrowser.open( praw_object_url(i) )),
             target_items)
 
@@ -776,20 +715,20 @@ class PRAWToys(cmd.Cmd): # {{{1
         '''upvote: upvote EVERYTHING in the current list'''
 
         print "You're about to upvote EVERYTHING in the current list."
-        continue_ = yes_no(False, "Do you really want to continue?")
+        continue_ = ahto_lib.yes_no(False, "Do you really want to continue?")
 
         if continue_:
-            progress_map( (lambda i: i.upvote()), self.items )
+            ahto_lib.progress_map( (lambda i: i.upvote()), self.items )
         else:
             print "Cancelled. Phew."
 
     def do_clear_vote(self, arg): # {{{3
         'clear_vote: clear vote on EVERYTHING in the current list - UNTESTED'
-        continue_ = yes_no("You're about to clear your votes on EVERYTHING"
+        continue_ = ahto_lib.yes_no("You're about to clear your votes on EVERYTHING"
             " in the current list. Do you really want to continue? [yN]")
 
         if continue_:
-            progress_map( (lambda i: i.clear_vote()), self.items )
+            ahto_lib.progress_map( (lambda i: i.clear_vote()), self.items )
         else:
             print "Cancelled. Phew."
 
@@ -798,7 +737,7 @@ if __name__ == '__main__':
     import traceback
     print VERSION
 
-    if yes_no(False, 'login?'):
+    if ahto_lib.yes_no(False, 'login?'):
         r.login(disable_warning=True)
         print "If everything worked, this should be your link karma:",
         print r.user.link_karma
