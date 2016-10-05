@@ -31,7 +31,7 @@ class ProgressMapper(object):
 
     Use the 'with' keyword.
     """
-    def __init__(self, items_len:int):
+    def __init__(self, items_len):
         self.items_len = items_len
         self.rjust_num = len(str(items_len))
         self(-1)
@@ -43,7 +43,7 @@ class ProgressMapper(object):
     def __exit__(self, exception_type, exception_value, traceback):
         print()
 
-    def __call__(self, item_index:int):
+    def __call__(self, item_index):
         item_num  = str(item_index + 1).rjust(self.rjust_num)
         print('\r{item_num}/{self.items_len}'.format(**locals()), end=' ')
 
