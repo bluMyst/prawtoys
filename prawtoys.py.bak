@@ -32,7 +32,6 @@ import traceback
 import webbrowser
 from pprint import pprint
 import ahto_lib
-import collections
 
 # Constants and functions and stuff. {{{1
 # When displaying comments/submissions, how many characters should we show?
@@ -44,8 +43,7 @@ def is_comment(submission): # {{{2
 def is_submission(submission): # {{{2
     return isinstance(submission, praw.objects.Submission)
 
-def comment_str(comment:praw.objects.Comment, # {{{2
-        characters_needed=0) -> str:
+def comment_str(comment, characters_needed=0): # {{{2
     '''
     convert a comment to a string
 
@@ -61,7 +59,7 @@ def comment_str(comment:praw.objects.Comment, # {{{2
 
     comment_string = ' :: /r/' + comment.subreddit.display_name
 
-    comment_text = ahto_lib.shorten_string(str(comment),
+    comment_text = ahto_lib.shorten_string(unicode(comment),
         max_width - len(comment_string))
 
     comment_text.replace('\n', '\\n')
@@ -69,8 +67,7 @@ def comment_str(comment:praw.objects.Comment, # {{{2
     comment_string = comment_text + comment_string
     return comment_string
 
-def submission_str(submission:praw.objects.Submission, # {{{2
-        characters_needed=0) -> str:
+def submission_str(submission, characters_needed=0): # {{{2
     '''
     convert a submission to a string
 
@@ -115,8 +112,8 @@ def print_all(submissions, file_=sys.stdout): # {{{2
 
             file_.write(object_str + '\n')
         except UnicodeEncodeError:
-            print(('[Failed to .write() a submission/comment ({}) here:'
-                'UnicodeEncodeError]').format(str(i)))
+            print ('[Failed to .write() a submission/comment ({}) here:'
+                'UnicodeEncodeError]').format(str(i))
 
 class PRAWToys(cmd.Cmd): # {{{1
     prompt = '0> '
@@ -125,11 +122,11 @@ class PRAWToys(cmd.Cmd): # {{{1
     def __init__(self, *args, **kwargs): # {{{2
         # Don't use raw input if we can use the better alternative. (readline)
         self.use_rawinput = not (
-            isinstance(sys.stdout.write, collections.Callable) and isinstance(sys.stdin.readline, collections.Callable))
+            callable(sys.stdout.write) and callable(sys.stdin.readline))
 
         if self.use_rawinput:
-            print("Looks like you don't have GNU readline installed. Oh, well.")
-            print()
+            print "Looks like you don't have GNU readline installed. Oh, well."
+            print
 
         self.items = []
         self.reddit_session = praw.Reddit(self.VERSION)
@@ -244,7 +241,7 @@ class PRAWToys(cmd.Cmd): # {{{1
             self.print_topics(i.header, i.command_names, 15,80)
 
         self.print_topics('Uncategorized commands.', misc_commands, 15,80)
-        self.print_topics(self.misc_header, list(help.keys()), 15,80)
+        self.print_topics(self.misc_header, help.keys(), 15,80)
         self.print_topics(self.undoc_header, undocumented_commands, 15,80)
 
     def update_prompt(self): # {{{3
@@ -257,9 +254,9 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     def filter_items(self, f, invert=False): # {{{3
         if invert:
-            new_items = itertools.filterfalse(f, self.items)
+            new_items = itertools.ifilterfalse(f, self.items)
         else:
-            new_items = filter(f, self.items)
+            new_items = itertools.ifilter(f, self.items)
 
         self.old_items = self.items
         self.items = list(new_items)
@@ -268,7 +265,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         '''given a list of subs, return all stored items from those subs'''
         subs = [i.lower() for i in subs]
         filter_func = lambda i: i.subreddit.display_name.lower() in subs
-        return list(filter(filter_func, self.items))
+        return filter(filter_func, self.items)
 
     def arg_to_matching_subs(self, subs_string=None): # {{{3
         '''
@@ -297,7 +294,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         item_str = praw_object_to_string(item, index_rjust+2).encode(
             encoding='ascii', errors='backslashreplace')
 
-        print('{index_str}: {item_str}'.format(**locals()))
+        print '{index_str}: {item_str}'.format(**locals())
 
     def logged_in_command(f): # {{{3
         """ A decorator for commands that need the user to be logged in.
@@ -313,7 +310,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         def new_f(self, *args, **kwargs):
             if (not hasattr(self.reddit_session, 'user')
                     or not self.reddit_session.user):
-                print('You need to be logged in first. Try typing "help login".')
+                print 'You need to be logged in first. Try typing "help login".'
                 return
 
             f(self, *args, **kwargs)
@@ -326,7 +323,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         if hasattr(self, 'old_items'):
             self.items = self.old_items[:]
         else:
-            print('No undo history found. Nothing to undo.')
+            print 'No undo history found. Nothing to undo.'
     do_u = do_undo
 
     def do_reset(self, arg): # {{{3
@@ -361,8 +358,8 @@ class PRAWToys(cmd.Cmd): # {{{1
             username = None
 
         self.reddit_session.login(username, disable_warning=True)
-        print("If everything worked, this should be your link karma:", end=' ')
-        print(self.reddit_session.user.link_karma)
+        print "If everything worked, this should be your link karma:",
+        print self.reddit_session.user.link_karma
 
     def do_width(self, arg): # {{{2
         """width [width]: set or view console width"""
@@ -372,7 +369,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         if len(args) > 0:
             ASSUMED_CONSOLE_WIDTH = int(args[0])
         else:
-            print("width =", ASSUMED_CONSOLE_WIDTH)
+            print "width =", ASSUMED_CONSOLE_WIDTH
 
     # Commands to add items. {{{2
     @logged_in_command # do_saved {{{3
@@ -429,7 +426,7 @@ class PRAWToys(cmd.Cmd): # {{{1
     def do_my_submissions(self, arg):
         '''my_submissions: get your submissions'''
         if not hasattr(self.reddit_session, 'user'):
-            print('You need to be logged in first.')
+            print 'You need to be logged in first.'
             return
 
         self.do_user_submissions(self.reddit_session.user.name)
@@ -438,7 +435,7 @@ class PRAWToys(cmd.Cmd): # {{{1
     def do_my_comments(self, arg):
         '''my_coments: get your comments'''
         if not hasattr(self.reddit_session, 'user'):
-            print('You need to be logged in first.')
+            print 'You need to be logged in first.'
             return
 
         self.do_user_comments(self.reddit_session.user.name)
@@ -449,17 +446,17 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         args = arg.split()
         sub_id = args[0]
-        print('Retrieving thread id: {sub_id}'.format(**locals()))
+        print 'Retrieving thread id: {sub_id}'.format(**locals())
 
         try:
             n = int(args[1])
-        except IndexError as ValueError:
+        except IndexError, ValueError:
             n = 10000
 
         sub = praw.objects.Submission.from_id(
                 self.reddit_session, sub_id)
 
-        print('Retrieving comments...')
+        print 'Retrieving comments...'
         #while True:
         #    coms = praw.helpers.flatten_tree(sub.comments)
         #    ncoms = 0
@@ -632,12 +629,12 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     def do_rm(self, arg): # {{{3
         '''rm <index>...: remove items by index'''
-        indicies = list(map(int, arg.split()))
+        indicies = map(int, arg.split())
 
         items_len = len(self.items)
         for i in indicies:
             if i < 0 or i > items_len-1:
-                print("Out of range:", i)
+                print "Out of range:", i
                 return
 
         self.old_items = self.items[:]
@@ -711,15 +708,15 @@ class PRAWToys(cmd.Cmd): # {{{1
                 frequency_by_sub[sub_name] = 1
 
         # Convert to [(k, v)] and then sort (ascending) by v.
-        frequency_by_sub = list(frequency_by_sub.items())
-        frequency_by_sub.sort(key=lambda item: item[1])
+        frequency_by_sub = list(frequency_by_sub.iteritems())
+        frequency_by_sub.sort(key=lambda (item): item[1])
 
         # This tells us how much we should rjust the numbers in our printout.
         max_number_length = len(str(len(self.items)))
 
         for sub, number in frequency_by_sub:
-            print('{number} : /r/{sub}'.format(sub=sub,
-                    number=str(number).rjust(max_number_length)))
+            print '{number} : /r/{sub}'.format(sub=sub,
+                    number=str(number).rjust(max_number_length))
     do_vs = do_view_subs # {{{3
 
     def do_lsub(self, arg): # {{{3
@@ -804,7 +801,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         try:
             filename = arg.split()[0]
         except ValueError:
-            print('No file specified!')
+            print 'No file specified!'
             return
 
         file_ = open(filename, 'w')
@@ -815,13 +812,13 @@ class PRAWToys(cmd.Cmd): # {{{1
         # NOTE untested for comments
         '''upvote: upvote EVERYTHING in the current list'''
 
-        print("You're about to upvote EVERYTHING in the current list.")
+        print "You're about to upvote EVERYTHING in the current list."
         continue_ = ahto_lib.yes_no(False, "Do you really want to continue?")
 
         if continue_:
             ahto_lib.progress_map( (lambda i: i.upvote()), self.items )
         else:
-            print("Cancelled. Phew.")
+            print "Cancelled. Phew."
 
     @logged_in_command # do_clear_vote {{{3
     def do_clear_vote(self, arg):
@@ -833,7 +830,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         if continue_:
             ahto_lib.progress_map( (lambda i: i.clear_vote()), self.items )
         else:
-            print("Cancelled. Phew.")
+            print "Cancelled. Phew."
 
 # Init code. {{{1
 if __name__ == '__main__':
@@ -846,7 +843,7 @@ if __name__ == '__main__':
             break
         except KeyboardInterrupt:
             # TODO: This doesn't work. Nothing gets printed.
-            print("Ctrl-C detected. Bye!")
+            print "Ctrl-C detected. Bye!"
             break
         except Exception as err:
             traceback.print_exc()
