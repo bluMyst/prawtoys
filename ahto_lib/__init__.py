@@ -1,5 +1,5 @@
 def yes_no(default:"True, False, or None", question:str) -> bool:
-    ''' default can be True, False, or None '''
+    ''' Asks the user a yes/no question. '''
     if default == None:
         yn_prompt = ' [yn]'
     elif default:
