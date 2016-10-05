@@ -1,4 +1,4 @@
-def yes_no(default, question):
+def yes_no(default:"True, False, or None", question:str) -> bool:
     ''' default can be True, False, or None '''
     if default == None:
         yn_prompt = ' [yn]'
@@ -31,7 +31,7 @@ class ProgressMapper(object):
 
     Use the 'with' keyword.
     """
-    def __init__(self, items_len):
+    def __init__(self, items_len:int):
         self.items_len = items_len
         self.rjust_num = len(str(items_len))
         self(-1)
@@ -43,7 +43,7 @@ class ProgressMapper(object):
     def __exit__(self, exception_type, exception_value, traceback):
         print()
 
-    def __call__(self, item_index):
+    def __call__(self, item_index:int):
         item_num  = str(item_index + 1).rjust(self.rjust_num)
         print('\r{item_num}/{self.items_len}'.format(**locals()), end=' ')
 
