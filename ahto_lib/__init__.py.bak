@@ -7,7 +7,7 @@ def yes_no(default, question):
     else:
         yn_prompt = ' [yN]'
 
-    answer = input(question + yn_prompt).lower()
+    answer = raw_input(question + yn_prompt).lower()
 
     if answer == 'y':
         return True
@@ -16,7 +16,7 @@ def yes_no(default, question):
     elif default != None:
         return default
     else:
-        print("Invalid response: " + answer)
+        print "Invalid response: " + answer
         return yes_no(default, question)
 
 def shorten_string(string, length):
@@ -41,11 +41,11 @@ class ProgressMapper(object):
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        print()
+        print
 
     def __call__(self, item_index):
         item_num  = str(item_index + 1).rjust(self.rjust_num)
-        print('\r{item_num}/{self.items_len}'.format(**locals()), end=' ')
+        print '\r{item_num}/{self.items_len}'.format(**locals()),
 
 def progress_map(f, l):
     """
