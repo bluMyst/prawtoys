@@ -88,6 +88,7 @@ def praw_object_to_string(praw_object, characters_needed=0): # {{{2
     ''' only works on submissions and comments
 
     BE CAREFUL! Sometimes returns a Unicode string. Use str.encode.
+    This might not actually matter now that we're using Python 3.
 
     See comment_str for explanation of how characters_needed works.
     '''
@@ -285,7 +286,13 @@ class PRAWToys(cmd.Cmd): # {{{1
         return self.items
 
     def print_item(self, index, item=None, index_rjust=None): # {{{3
-        ''' index_rjust is how far to rjust the index number '''
+        ''' index_rjust is how far to rjust the index number. If it's None,
+        we'll just rjust it based on the highest index in self.items
+
+        If that doesn't make any sense, just keep it as None and you should be
+        fine.
+        '''
+
         if item == None:
             item = self.items[index]
 
