@@ -84,11 +84,22 @@ def comment_str(comment:praw.objects.Comment, # {{{2
     #       It's a good approach yet.
     max_width = ASSUMED_CONSOLE_WIDTH - characters_needed
 
-    comment_string = ' :: /r/' + comment.subreddit.display_name
+    subreddit_indicator = ' :: /r/' + comment.subreddit.display_name
 
-    comment_text = str(comment)
+    # How much width do we have left to fill up with the text of the comment?
+    # Most comments are pretty long, so we should use as much space as we can
+    # spare.
+    max_comment_width = max_width - len(subreddit_indicator)
 
-    # Actually printing these characters would result in very messy output.
+    # We shorten str(comment) to be only max_width characters long here, to
+    # potentially save on processing power in the later code, where we
+    # str.replace a bunch of special characters. Imagine if this comment were
+    # 10,000 characters long or something. That's a lot of replacement that
+    # wouldn't accomplish anything.
+    comment_text = str(comment)[:max_width]
+
+    # Actually printing these characters would result in very messy output, so
+    # replace them with something a little more readable.
     comment_text.replace('\n', '\\n')
     comment_text.replace('\t', '\\t')
     comment_text.replace('\r', '\\r')
