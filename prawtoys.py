@@ -421,7 +421,13 @@ class PRAWToys(cmd.Cmd): # {{{1
             traceback.print_exception(*sys.exc_info())
 
     def do_login(self, arg): # {{{2
-        """ login [username]: log in to your reddit account """
+        """ login [username]: log in to your reddit account. BUGGY OR BROKEN """
+        if not yes_no("WARNING: The login command seems to either be buggy or"
+                " broken, because reddit is moving toward only supporting"
+                " OAuth, and PRAWToys doesn't yet have OAuth support. Give it a"
+                " try anyway?"):
+            return
+
         args = arg.split()
 
         if len(args) > 0:
