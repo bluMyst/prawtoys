@@ -11,13 +11,12 @@
 # TODO: Nodupes command, praw.objects.Submission has .__eq__() so == should
 #       work. Seems to work after a bit of testing. Also, wasn't there a command
 #       that filtered out BOTH of the dupes? Might come in handy too.
-# TODO: All commands that need user to be logged in should fail gracefully.
 # TODO: Progress indicator when loading items. Is this even possible? If not,
 #       just have one thread making a pretty loading animation while the other
 #       thread is waiting on the server.
 # TODO: sfw and nsfw should filter out comments based on the thread type. Same
 #       for title and ntitle.
-# TODO: Use OAuth or everything will be slowed down on purpose.
+# TODO: Use OAuth because now the login command is broken. :(
 # TODO: unittests for the thread command.
 # TODO: unittests for the rm command.
 
@@ -36,6 +35,7 @@ import collections
 
 # Constants and functions and stuff. {{{1
 # When displaying comments/submissions, how many characters should we show?
+# I.E., how many characters wide should we assume the user's terminal window is?
 ASSUMED_CONSOLE_WIDTH = 80
 
 def is_comment(submission): # {{{2
@@ -47,24 +47,54 @@ def is_submission(submission): # {{{2
 def comment_str(comment:praw.objects.Comment, # {{{2
         characters_needed=0) -> str:
     '''
-    convert a comment to a string
+    Convert a comment into to a string that perfectly fits on a terminal that's
+    ASSUMED_CONSOLE_WIDTH characters wide.
+
+    +-----------------------------------------------+
+    | >>> ASSUMED_CONSOLE_WIDTH = 45                |
+    | >>> print(comment_str(foo))                   |
+    | 123: This is an ex... :: /r/example_subreddit |
+    +-----------------------------------------------+
 
     characters_needed is for code that wants to print comment_str with other
     stuff on the same line. For example:
 
-    123: What did you just fucking... :: /r/circlejerk
+    +-----------------------------------------------+
+    | >>> ASSUMED_CONSOLE_WIDTH = 45                |
+    | >>> print("123: " + comment_str(foo))         |
+    | 123: What did you just fucking... :: /r/circl |
+    | ejerk                                         |
+    +-----------------------------------------------+
 
-    This would be 5 characters off, normally, but if you set characters_needed
-    to 5, it'll be completely perfect.
+    Notice how the "123: " makes the string 5 characters too long? Now watch
+    this:
+
+    +-----------------------------------------------+
+    | >>> ASSUMED_CONSOLE_WIDTH = 45                |
+    | >>> print("123: " + comment_str(foo, 5))      |
+    | 123: What did you just fu... :: /r/circlejerk |
+    +-----------------------------------------------+
+
+    It's perfectly lined up with the terminal size.
     '''
+    # TODO: Instead of taking characters_needed, take a header string and a
+    #       footer string and combine them together inside this function.
+    #       I'm procrastinating on this because I'd need to rewrite a lot of
+    #       code in a lot of different places, and I'm still not 100% sure that
+    #       It's a good approach yet.
     max_width = ASSUMED_CONSOLE_WIDTH - characters_needed
 
     comment_string = ' :: /r/' + comment.subreddit.display_name
 
+    comment_text = str(comment)
+
+    # Actually printing these characters would result in very messy output.
+    comment_text.replace('\n', '\\n')
+    comment_text.replace('\t', '\\t')
+    comment_text.replace('\r', '\\r')
+
     comment_text = ahto_lib.shorten_string(str(comment),
         max_width - len(comment_string))
-
-    comment_text.replace('\n', '\\n')
 
     comment_string = comment_text + comment_string
     return comment_string
