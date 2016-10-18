@@ -150,7 +150,7 @@ def praw_object_url(praw_object): # {{{2
             "praw_object_url only handles submissions and comments")
 
 def print_all(submissions, file_=sys.stdout): # {{{2
-    '''print all submissions DEPRECATED'''
+    '''print all submissions. DEPRECATED!'''
     for i in submissions:
         try:
             object_str = praw_object_to_string(i).encode(
@@ -167,21 +167,26 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     def __init__(self, *args, **kwargs): # {{{2
         # Don't use raw input if we can use the better alternative. (readline)
-        self.use_rawinput = not (
-            isinstance(sys.stdout.write, collections.Callable) and isinstance(sys.stdin.readline, collections.Callable))
 
-        if self.use_rawinput:
-            print("Looks like you don't have GNU readline installed. Oh, well.")
-            print()
+        # This is arguably more readable than having an if/else, but I'll
+        # understand if you don't like the way it looks.
+        can_use_readline = (isinstance(sys.stdout.write, collections.Callable)
+            and isinstance(sys.stdin.readline, collections.Callable)))
+
+        self.use_rawinput = not can_use_readline
 
         self.items = []
         self.reddit_session = praw.Reddit(self.VERSION)
 
         # No super() with old-style classes. :(
+        # TODO: How about in Python 3?
         cmd.Cmd.__init__(self, *args, **kwargs)
 
     # General settings. {{{2
-    def emptyline(self): pass # disable empty line repeating the last command
+    def emptyline(self): # {{{3
+        # Disable empty line repeating the last command. Who thought that was a
+        # good idea?
+        pass
 
     def postcmd(self, r, l): # {{{3
         ''' Runs after every command.
@@ -189,9 +194,16 @@ class PRAWToys(cmd.Cmd): # {{{1
         Just updates the prompt to show the current number of items in
         self.items.
         '''
+        # If you really wanted to, you could optimize this so that postcmd
+        # doesn't do anything, and any command that could possibly change
+        # self.items will automatically run self.update_prompt() after it's done
+        # running. But personally I think there are too many opportunities for
+        # programmer oversights with that system. So I'm going with the slower
+        # but safer approach.
         self.update_prompt()
 
     def do_EOF(self, arg): # {{{3
+        # If the user types an EOF character, exit PRAWToys.
         exit(0)
     do_exit = do_EOF
 
@@ -199,17 +211,17 @@ class PRAWToys(cmd.Cmd): # {{{1
     def do_help(self, arg): # {{{3
         'List available commands with "help" or detailed help with "help cmd".'
         # HACK: This is pretty much the cmd.Cmd.do_help method copied verbatim,
-        # with a few changes here-and-there.
+        # with a few changes here-and-there. I wanted to be able to sort
+        # commands into categories, because there are so many different commands
+        # and command aliases that PRAWToys has to offer it can be kind of
+        # intimidating to look at the list of commands without them.
+
+        # TODO: This method's code is really ugly. I'm sorry in advance.
 
         # If they want help on a specific command, just pass them off to
-        # the original method.
-        if arg:
-            return cmd.Cmd.do_help(self, arg)
-
-        names = self.get_names()
-        misc_commands = []
-        undocumented_commands = []
-        help = {}
+        # the original method. No reason to reinvent the wheel in this
+        # particular case.
+        if arg: return cmd.Cmd.do_help(self, arg)
 
         prawtoys_instance = self # For use inside the classes below.
         class CommandCategory(object):
@@ -236,24 +248,31 @@ class PRAWToys(cmd.Cmd): # {{{1
                 return command_names
 
         prawtoys_instance = self # for use inside the objects below
-        add_commands = CommandCategory('Commands for adding items', [
-            'saved', 'user', 'user_comments', 'user_submissions', 'mine',
+        add_commands = CommandCategory('Commands for adding items',
+
+            ['saved', 'user', 'user_comments', 'user_submissions', 'mine',
             'my_comments', 'my_submissions', 'thread', 'get_from'])
 
-        filter_commands = CommandCategory('Commands for filtering items.', [
-            'submission', 'comment', 'sub', 'nsub', 'sfw', 'nsfw', 'self',
+        filter_commands = CommandCategory('Commands for filtering items.',
+
+            ['submission', 'comment', 'sub', 'nsub', 'sfw', 'nsfw', 'self',
             'nself', 'title', 'ntitle'])
 
-        view_commands = CommandCategory('Commands for viewing list items.', [
-            'ls', 'head', 'tail', 'view_subs', 'vs', 'get_links', 'gl'])
+        view_commands = CommandCategory('Commands for viewing list items.',
+            ['ls', 'head', 'tail', 'view_subs', 'vs', 'get_links', 'gl'])
 
         interact_commands = CommandCategory(
             'Commands for interacting with items.',
             ['open', 'save_to', 'upvote', 'clear_vote'])
 
-        command_categories = CommandCategories(
-            [add_commands, filter_commands, view_commands, interact_commands])
+        command_categories = CommandCategories([
+            add_commands, filter_commands, view_commands, interact_commands])
 
+        names = self.get_names()
+        misc_commands = []
+        undocumented_commands = []
+
+        help = {}
         for name in names:
             if name[:5] == 'help_':
                 help[name[5:]] = 1
@@ -292,7 +311,8 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     def update_prompt(self): # {{{3
         """ Change the prompt to show how many matches there are. """
-        self.prompt = str(len(self.items)) + '> '
+        items_len = str(len(self.items))
+        self.prompt = items_len + '> '
 
     def add_items(self, l): # {{{3
         self.old_items = self.items[:]
