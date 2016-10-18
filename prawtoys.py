@@ -426,6 +426,7 @@ class PRAWToys(cmd.Cmd): # {{{1
                 " broken, because reddit is moving toward only supporting"
                 " OAuth, and PRAWToys doesn't yet have OAuth support. Give it a"
                 " try anyway?"):
+            print()
             return
 
         args = arg.split()
