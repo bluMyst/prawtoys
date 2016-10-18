@@ -36,7 +36,7 @@ The possibilities are endless!
 
 ## Installing/running
 
-First of all, install Python 2 and praw. You can install praw by running:
+First of all, install Python 3 and praw. You can install praw by running:
 
     python -m pip install praw
 
