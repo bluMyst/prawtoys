@@ -171,7 +171,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         # This is arguably more readable than having an if/else, but I'll
         # understand if you don't like the way it looks.
         can_use_readline = (isinstance(sys.stdout.write, collections.Callable)
-            and isinstance(sys.stdin.readline, collections.Callable)))
+            and isinstance(sys.stdin.readline, collections.Callable))
 
         self.use_rawinput = not can_use_readline
 
