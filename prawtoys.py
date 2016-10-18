@@ -104,26 +104,27 @@ def comment_str(comment:praw.objects.Comment, # {{{2
     comment_text.replace('\t', '\\t')
     comment_text.replace('\r', '\\r')
 
-    comment_text = ahto_lib.shorten_string(str(comment),
-        max_width - len(comment_string))
-
-    comment_string = comment_text + comment_string
-    return comment_string
+    comment_text = ahto_lib.shorten_string(str(comment), max_comment_width)
+    return comment_text + subreddit_indicator
 
 def submission_str(submission:praw.objects.Submission, # {{{2
         characters_needed=0) -> str:
     '''
     convert a submission to a string
 
-    see comment_str for explanation of characters_needed
+    See comment_str for more information about this code.
     '''
     max_width = ASSUMED_CONSOLE_WIDTH - characters_needed
-    subreddit_string = ' :: /r/' + submission.subreddit.display_name
 
-    title = ahto_lib.shorten_string(submission.title,
-        max_width - len(subreddit_string))
+    subreddit_indicator = ' :: /r/' + submission.subreddit.display_name
+    max_title_width = max_width - len(subreddit_indicator)
 
-    return title + subreddit_string
+    # As far as I know, reddit submissions can't have tabs, newlines, or
+    # carriage returns in their text. So it shouldn't be necessary to escape
+    # those like we did in comment_str.
+    title = ahto_lib.shorten_string(submission.title, max_title_width)
+
+    return title + subreddit_indicator
 
 def praw_object_to_string(praw_object, characters_needed=0): # {{{2
     ''' only works on submissions and comments
@@ -131,7 +132,7 @@ def praw_object_to_string(praw_object, characters_needed=0): # {{{2
     BE CAREFUL! Sometimes returns a Unicode string. Use str.encode.
     This might not actually matter now that we're using Python 3.
 
-    See comment_str for explanation of how characters_needed works.
+    See comment_str for an explanation of how characters_needed works.
     '''
     if is_submission(praw_object):
         return submission_str(praw_object, characters_needed)
