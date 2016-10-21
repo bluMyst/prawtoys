@@ -205,8 +205,38 @@ class PRAWToys(cmd.Cmd): # {{{1
         exit(0)
     do_exit = do_EOF
 
-    # Internal utility methods. {{{2
-    def do_help(self, arg): # {{{3
+    # Undo and reset. {{{2
+    def do_undo(self, arg): # {{{3
+        '''undo: undoes last command'''
+        if hasattr(self, 'old_items'):
+            self.items = self.old_items[:]
+        else:
+            print('No undo history found. Nothing to undo.')
+    do_u = do_undo
+
+    def do_reset(self, arg): # {{{3
+        '''reset: clear all items'''
+        self.items = []
+
+    # Debug commands. {{{2
+    def do_x(self, arg): # {{{3
+        '''
+        x <command>: execute <command> as python code and pretty-print the
+        result (if any)
+        '''
+        # NOTE: Redundant with cmd's py command. Might want to remove depending
+        #       on how pretty the printing of do_py is.
+        try:
+            pprint(eval(arg))
+        except SyntaxError:
+            # If 'arg' doesn't return a value, eval(arg) will raise a
+            # SyntaxError. So instead, just exec() it and don't print the
+            # (nonexistant) result.
+            exec(arg)
+        except:
+            traceback.print_exception(*sys.exc_info())
+
+    def do_help(self, arg): # {{{2
         'List available commands with "help" or detailed help with "help cmd".'
         # HACK: This is pretty much the cmd.Cmd.do_help method copied verbatim,
         # with a few changes here-and-there. I wanted to be able to sort
@@ -411,37 +441,6 @@ class PRAWToys(cmd.Cmd): # {{{1
             f(self, *args, **kwargs)
 
         return new_f
-
-    # Undo and reset. {{{2
-    def do_undo(self, arg): # {{{3
-        '''undo: undoes last command'''
-        if hasattr(self, 'old_items'):
-            self.items = self.old_items[:]
-        else:
-            print('No undo history found. Nothing to undo.')
-    do_u = do_undo
-
-    def do_reset(self, arg): # {{{3
-        '''reset: clear all items'''
-        self.items = []
-
-    # Debug commands. {{{2
-    def do_x(self, arg): # {{{3
-        '''
-        x <command>: execute <command> as python code and pretty-print the
-        result (if any)
-        '''
-        # NOTE: Redundant with cmd's py command. Might want to remove depending
-        #       on how pretty the printing of do_py is.
-        try:
-            pprint(eval(arg))
-        except SyntaxError:
-            # If 'arg' doesn't return a value, eval(arg) will raise a
-            # SyntaxError. So instead, just exec() it and don't print the
-            # (nonexistant) result.
-            exec(arg)
-        except:
-            traceback.print_exception(*sys.exc_info())
 
     def do_login(self, arg): # {{{2
         """ login [username]: log in to your reddit account. BUGGY OR BROKEN """
