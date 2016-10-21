@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# vim: foldmethod=marker
+# vim: foldmethod=marker colorcolumn=80
 # Comments. {{{1
 # Anything that's been changed without testing will have U_NTESTED* in the
 # docstring. Anything with a comment saying "unit-tested" means that it's
@@ -234,8 +234,37 @@ class PRAWToys(cmd.Cmd): # {{{1
                             'nonexistent command: ' + i)
 
         class CommandCategories(object):
-            def __init__(self, command_categories=[]):
-                self.command_categories = command_categories
+            def __init__(self, *args):
+                '''You can call this as:
+
+                    CommandCategories([
+                        CommandCategory(header, [command_name, ...]),
+                        ...])
+
+                    But you can also call it as:
+
+                    CommandCategories([
+                        header, [
+                            command_name, ...]],
+
+                        ...)
+
+                    In which case it'll automatically create CommandCategory
+                    objects for you.
+                '''
+                if len(args) == 1:
+                    self.command_categories = args[0]
+                elif len(args) % 2 == 0:
+                    self.command_categories = []
+
+                    for i in range(0, len(args), 2):
+                        header, command_names = args[i], args[i+1]
+
+                        self.command_categories.append(
+                            CommandCategory(header, command_names))
+                else:
+                    raise ValueError("CommandCategories was called with an"
+                        " invalid number of arguments:" + str(len(args)))
 
             def get_all_command_names(self):
                 command_names = []
@@ -245,26 +274,22 @@ class PRAWToys(cmd.Cmd): # {{{1
 
                 return command_names
 
-        prawtoys_instance = self # for use inside the objects below
-        add_commands = CommandCategory('Commands for adding items',
+        # TODO: Yeah, I know. This is very... Lisp.
+        command_categories = CommandCategories(
+            'Commands for adding items:', [
+                'saved', 'user', 'user_comments', 'user_submissions', 'mine',
+                'my_comments', 'my_submissions', 'thread', 'get_from'],
 
-            ['saved', 'user', 'user_comments', 'user_submissions', 'mine',
-            'my_comments', 'my_submissions', 'thread', 'get_from'])
+            'Commands for filtering items:', [
+                'submission', 'comment', 'sub', 'nsub', 'sfw', 'nsfw', 'self',
+                'nself', 'title', 'ntitle', 'rm'],
 
-        filter_commands = CommandCategory('Commands for filtering items.',
+            'Commands for viewing list items:', [
+                'ls', 'head', 'tail', 'view_subs', 'vs', 'get_links', 'gl',
+                'oi', 'open_index', 'lsub'],
 
-            ['submission', 'comment', 'sub', 'nsub', 'sfw', 'nsfw', 'self',
-            'nself', 'title', 'ntitle'])
-
-        view_commands = CommandCategory('Commands for viewing list items.',
-            ['ls', 'head', 'tail', 'view_subs', 'vs', 'get_links', 'gl'])
-
-        interact_commands = CommandCategory(
-            'Commands for interacting with items.',
-            ['open', 'save_to', 'upvote', 'clear_vote'])
-
-        command_categories = CommandCategories([
-            add_commands, filter_commands, view_commands, interact_commands])
+            'Commands for interacting with items:', [
+                'open', 'save_to', 'upvote', 'clear_vote'])
 
         names = self.get_names()
         misc_commands = []
