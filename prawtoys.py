@@ -178,9 +178,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.items = []
         self.reddit_session = praw.Reddit(self.VERSION)
 
-        # No super() with old-style classes. :(
-        # TODO: How about in Python 3?
-        cmd.Cmd.__init__(self, *args, **kwargs)
+        super(PRAWToys, self).__init__(self, *args, **kwargs)
 
     # General settings. {{{2
     def emptyline(self): # {{{3
