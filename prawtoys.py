@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # vim: foldmethod=marker colorcolumn=80
 # Comments. {{{1
 # Anything that's been changed without testing will have U_NTESTED* in the
