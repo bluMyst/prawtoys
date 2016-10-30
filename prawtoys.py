@@ -19,9 +19,16 @@
 # TODO: Use OAuth because now the login command is broken. :(
 # TODO: unittests for the thread command.
 # TODO: unittests for the rm command.
+# TODO: All docstrings should be in this format:
+#       '''f(oo) <bar> [baz]
+#
+#       Foos a bar and then bazzes stuff. 'qux' is
+#       an alias for this command.
+#       '''
+#
+#       It's much prettier and more consistant.
 
 # Imports. {{{1
-import praw
 import cmd
 import os
 import re
@@ -30,8 +37,12 @@ import itertools
 import traceback
 import webbrowser
 from pprint import pprint
-import ahto_lib
 import collections
+import pickle
+
+import praw
+
+import ahto_lib
 
 # Constants and functions and stuff. {{{1
 # When displaying comments/submissions, how many characters should we show?
@@ -166,6 +177,7 @@ class PRAWToys(cmd.Cmd): # {{{1
     VERSION = "PRAWToys 1.0.2"
 
     def __init__(self, *args, **kwargs): # {{{2
+        """ See cmd.Cmd.__init__ for valid arguments """
         # Don't use raw input if we can use the better alternative. (readline)
 
         # This is arguably more readable than having an if/else, but I'll
@@ -889,16 +901,25 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.open_all(self.arg_to_matching_subs(arg))
 
     def do_open_index(self, arg): # {{{3
-        '''open_index <index>...: open item(s) by index'''
-        args = [int(i) for i in arg.split()]
+        '''open_index <index>...
+
+        Open the item(s) at the given index/indicies.
+        '''
+        args = map(int, arg.split())
         target_items = [self.items[i] for i in args]
 
         self.open_all(target_items)
 
     do_oi = do_open_index # {{{3
 
-    def do_save_to(self, arg): # {{{3
-        '''save_to <file>: save URLs to file'''
+    def do_save_to_file(self, arg): # {{{3
+        '''save_to_file <filename>
+
+        Save the current items to <filename>.pickle, so that you can load them
+        later with load_from_file.
+
+        UNTESTED
+        '''
         try:
             filename = arg.split()[0]
         except ValueError:
@@ -910,8 +931,12 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     @logged_in_command # do_upvote {{{3
     def do_upvote(self, arg):
-        # NOTE untested for comments
-        '''upvote: upvote EVERYTHING in the current list'''
+        '''upvote
+
+        Upvote EVERYTHING in the current list.
+
+        Note: Untested for comments.
+        '''
 
         print("You're about to upvote EVERYTHING in the current list.")
         continue_ = ahto_lib.yes_no(False, "Do you really want to continue?")
@@ -923,7 +948,12 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     @logged_in_command # do_clear_vote {{{3
     def do_clear_vote(self, arg):
-        'clear_vote: clear vote on EVERYTHING in the current list - UNTESTED'
+        '''clear_vote
+
+        Clear your vote on EVERYTHING in the current list.
+
+        UNTESTED
+        '''
         continue_ = ahto_lib.yes_no(False, "You're about to clear your votes on"
             " EVERYTHING in the current list. Do you really want to"
             " continue?")
