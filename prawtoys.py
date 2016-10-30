@@ -321,7 +321,8 @@ class PRAWToys(cmd.Cmd): # {{{1
         command_categories = CommandCategories(
             'Commands for adding items:', [
                 'saved', 'user', 'user_comments', 'user_submissions', 'mine',
-                'my_comments', 'my_submissions', 'thread', 'get_from'],
+                'my_comments', 'my_submissions', 'thread', 'get_from',
+                'load_from_file'],
 
             'Commands for filtering items:', [
                 'submission', 'comment', 'sub', 'nsub', 'sfw', 'nsfw', 'self',
@@ -332,7 +333,7 @@ class PRAWToys(cmd.Cmd): # {{{1
                 'oi', 'open_index', 'lsub'],
 
             'Commands for interacting with items:', [
-                'open', 'save_to', 'upvote', 'clear_vote'])
+                'open', 'save_to_file', 'upvote', 'clear_vote'])
 
         names = self.get_names()
         misc_commands = []
@@ -625,6 +626,24 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         self.add_items(sub.search('', limit=limit, sort=sort))
 
+    def do_load_from_file(self, arg): # {{{3
+        '''load_from_file <filename>
+
+        Load the items stored in <filename>.pickle. This is generally to get
+        items stored with the save_to_file command.
+
+        Be careful with openning pickle files from sources you don't trust!
+
+        UNTESTED
+        '''
+        try:
+            filename = arg.split()[0] + '.pickle'
+        except IndexError:
+            print('No file specified!')
+            return
+
+        with open(filename, 'rb') as file_:
+            self.items += pickle.load(file_)
 
     # Commands for filtering. {{{2
     def do_submission(self, arg): # {{{3
