@@ -160,18 +160,6 @@ def praw_object_url(praw_object): # {{{2
         raise ValueError(
             "praw_object_url only handles submissions and comments")
 
-def print_all(submissions, file_=sys.stdout): # {{{2
-    '''print all submissions. DEPRECATED!'''
-    for i in submissions:
-        try:
-            object_str = praw_object_to_string(i).encode(
-                encoding='ascii', errors='backslashreplace')
-
-            file_.write(object_str + '\n')
-        except UnicodeEncodeError:
-            print(('[Failed to .write() a submission/comment ({}) here:'
-                'UnicodeEncodeError]').format(str(i)))
-
 class PRAWToys(cmd.Cmd): # {{{1
     prompt = '0> '
     VERSION = "PRAWToys 1.0.2"
@@ -921,13 +909,13 @@ class PRAWToys(cmd.Cmd): # {{{1
         UNTESTED
         '''
         try:
-            filename = arg.split()[0]
+            filename = arg.split()[0] + '.pickle'
         except ValueError:
             print('No file specified!')
             return
 
-        file_ = open(filename, 'w')
-        print_all(self.items, file_) # TODO print_all deprecated
+        with open(filename, 'wb') as file_:
+            pickle.dump(self.items, file_)
 
     @logged_in_command # do_upvote {{{3
     def do_upvote(self, arg):
