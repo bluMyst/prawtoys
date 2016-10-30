@@ -429,9 +429,10 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         index_str = str(index).rjust(index_rjust)
 
-        item_str = praw_object_to_string(item, index_rjust+2).encode(
-            encoding='ascii', errors='backslashreplace')
-
+        # TODO: This code might crash on some systems because it might print
+        #       unicode characters to the console. Try using str.encode and/or
+        #       str.decode.
+        item_str = praw_object_to_string(item, index_rjust+2)
         print('{index_str}: {item_str}'.format(**locals()))
 
     def logged_in_command(f): # {{{3
