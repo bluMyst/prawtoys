@@ -1,5 +1,5 @@
-def yes_no(default:"True, False, or None", question:str) -> bool:
-    ''' Asks the user a yes/no question. '''
+def yes_no(default, question):
+    ''' default can be True, False, or None '''
     if default == None:
         yn_prompt = ' [yn]'
     elif default:
@@ -57,3 +57,4 @@ def progress_map(f, l):
         for i, v in enumerate(l):
             f(v)
             progress_mapper(i)
+
