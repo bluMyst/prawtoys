@@ -19,6 +19,9 @@
 # TODO: Use OAuth because now the login command is broken. :(
 # TODO: unittests for the thread command.
 # TODO: unittests for the rm command.
+# TODO: Test PRAWToys.input and migrate code over to using it. If any code even
+#       needs input().
+# TODO: Same but for PRAWToys.print. This one should be easy.
 # TODO: All docstrings should be in this format:
 #       '''f(oo) <bar> [baz]
 #
@@ -179,6 +182,16 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.reddit_session = praw.Reddit(self.VERSION)
 
         super(PRAWToys, self).__init__(self, *args, **kwargs)
+
+    def print(self, *args, **kwargs): # {{{2
+        """ A version of print that always uses self.stdout """
+        kwargs['file'] = self.stdout
+        return print(*args, **kwargs)
+
+    def input(self, prompt=""): # {{{2
+        """ A version of input that always uses self.stdin UNTESTED """
+        self.print(prompt, end="")
+        self.stdin.readline()
 
     # General settings. {{{2
     def emptyline(self): # {{{3
