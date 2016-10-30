@@ -458,10 +458,10 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     def do_login(self, arg): # {{{2
         """ login [username]: log in to your reddit account. BUGGY OR BROKEN """
-        if not yes_no("WARNING: The login command seems to either be buggy or"
-                " broken, because reddit is moving toward only supporting"
-                " OAuth, and PRAWToys doesn't yet have OAuth support. Give it a"
-                " try anyway?"):
+        if not ahto_lib.yes_no(None, "WARNING: The login command seems to"
+                " either be buggy or broken, because reddit is moving toward"
+                " only supporting OAuth, and PRAWToys doesn't yet have OAuth"
+                " support. Give it a try anyway?"):
             print()
             return
 
