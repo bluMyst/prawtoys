@@ -36,9 +36,9 @@ The possibilities are endless!
 
 ## Installing/running
 
-First of all, install Python 3 and praw. You can install praw by running:
+First of all, install Python 3 and make sure it's in your PATH. Then run:
 
-    python -m pip install praw
+    python -m pip install --upgrade praw praw-oauth2util
 
 Then, run prawtoys with:
 

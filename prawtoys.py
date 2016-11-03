@@ -9,8 +9,9 @@
 #   won't get confused and find a false positive.
 #
 # TODO: Nodupes command, praw.objects.Submission has .__eq__() so == should
-#       work. Seems to work after a bit of testing. Also, wasn't there a command
-#       that filtered out BOTH of the dupes? Might come in handy too.
+#       work. Seems to work after a bit of testing. Also, wasn't there a
+#       command in URLToys that filtered out BOTH of the dupes? Might come in
+#       handy too.
 # TODO: Progress indicator when loading items. Is this even possible? If not,
 #       just have one thread making a pretty loading animation while the other
 #       thread is waiting on the server.
@@ -44,6 +45,7 @@ import collections
 import pickle
 
 import praw
+import OAuth2Util
 
 import ahto_lib
 
@@ -51,6 +53,34 @@ import ahto_lib
 # When displaying comments/submissions, how many characters should we show?
 # I.E., how many characters wide should we assume the user's terminal window is?
 ASSUMED_CONSOLE_WIDTH = 80
+
+def check_praw_version(min_version): # {{{2
+    ''' Checks if the current praw version is at least min_version.
+
+    >>> import praw
+    >>> praw.__version__ = '3.5.0'
+    >>> check_praw_version('3.0.0')
+    True
+    >>> check_praw_version('4.0.0')
+    False
+    '''
+    global praw
+
+    min_version  = [int(i) for i in min_version.split('.')]
+    praw_version = [int(i) for i in praw.__version__.split('.')]
+
+    if len(min_version) != 3:
+        raise ValueError('min_version must be in the form:'
+            ' version.subversion.bugfix')
+    elif len(praw_version) != 3:
+        raise RuntimeError('Unable to parse praw.__version__: '
+            + repr(praw.__version__))
+
+    for min, praw in zip(min_version, praw_version):
+        if praw < min:
+            return False
+
+    return True
 
 def is_comment(submission): # {{{2
     return isinstance(submission, praw.objects.Comment)
@@ -458,13 +488,10 @@ class PRAWToys(cmd.Cmd): # {{{1
         return new_f
 
     def do_login(self, arg): # {{{2
-        """ login [username]: log in to your reddit account. BUGGY OR BROKEN """
-        if not ahto_lib.yes_no(None, "WARNING: The login command seems to"
-                " either be buggy or broken, because reddit is moving toward"
-                " only supporting OAuth, and PRAWToys doesn't yet have OAuth"
-                " support. Give it a try anyway?"):
-            print()
-            return
+        """login [username] !! BROKEN !!
+
+        Log in to your reddit account.
+        """
 
         args = arg.split()
 
@@ -473,8 +500,21 @@ class PRAWToys(cmd.Cmd): # {{{1
         else:
             username = None
 
-        self.reddit_session.login(username, disable_warning=True)
-        print("If everything worked, this should be your link karma:", end=' ')
+        if not check_praw_version('3.2.0'):
+            print("This feature only works on praw 3.2 and above.")
+            return
+
+        # "Starting with version 3.2 praw will refresh the token automatically
+        # if it encounters an InvalidTokenException. If you want to use this
+        # new feature, you should call o.refresh(force=True) once at the start
+        # to make sure praw has a valid refresh token."
+        # Source: https://github.com/SmBe19/praw-OAuth2Util/blob/master/OAuth2Util/README.md
+        #
+        # TODO: Currently broken. It tries to find oauth.ini in the current
+        # directory for some reason.
+        OAuth2Util.OAuth2Util(self.reddit_session).refresh(force=True)
+
+        print("If everything worked, this should be your link karma: ", end='')
         print(self.reddit_session.user.link_karma)
 
     def do_width(self, arg): # {{{2
