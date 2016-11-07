@@ -195,7 +195,7 @@ def praw_object_url(praw_object): # {{{2
 
 class PRAWToys(cmd.Cmd): # {{{1
     prompt = '0> '
-    VERSION = "PRAWToys 1.0.2"
+    VERSION = "PRAWToys 2.0.0"
 
     def __init__(self, *args, **kwargs): # {{{2
         """ See cmd.Cmd.__init__ for valid arguments """
@@ -226,7 +226,7 @@ class PRAWToys(cmd.Cmd): # {{{1
     # General settings. {{{2
     def emptyline(self): # {{{3
         # Disable empty line repeating the last command. Who thought that was a
-        # good idea?
+        # good default?
         pass
 
     def postcmd(self, r, l): # {{{3
@@ -238,9 +238,12 @@ class PRAWToys(cmd.Cmd): # {{{1
         # If you really wanted to, you could optimize this so that postcmd
         # doesn't do anything, and any command that could possibly change
         # self.items will automatically run self.update_prompt() after it's done
-        # running. But personally I think there are too many opportunities for
-        # programmer oversights with that system. So I'm going with the slower
-        # but safer approach.
+        # running. You'd probably want to make an @updates_items decorator for
+        # that, too. And don't forget to copy over the docstring.
+
+        # But personally, I think there are too many opportunities for
+        # programmer oversight with that system. So I'm going with the slower
+        # but safer (and more maintainable!) approach.
         self.update_prompt()
 
     def do_EOF(self, arg): # {{{3
@@ -250,7 +253,10 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     # Undo and reset. {{{2
     def do_undo(self, arg): # {{{3
-        '''undo: undoes last command'''
+        '''undo
+
+        Resets the item list one change back in time.
+        '''
         if hasattr(self, 'old_items'):
             self.items = self.old_items[:]
         else:
@@ -258,17 +264,18 @@ class PRAWToys(cmd.Cmd): # {{{1
     do_u = do_undo
 
     def do_reset(self, arg): # {{{3
-        '''reset: clear all items'''
+        '''reset
+
+        Clear all items from the item list.
+        '''
         self.items = []
 
     # Debug commands. {{{2
     def do_x(self, arg): # {{{3
+        ''' x <command>
+
+        Execute <command> as python code and pretty-print the result (if any).
         '''
-        x <command>: execute <command> as python code and pretty-print the
-        result (if any)
-        '''
-        # NOTE: Redundant with cmd's py command. Might want to remove depending
-        #       on how pretty the printing of do_py is.
         try:
             pprint(eval(arg))
         except SyntaxError:
@@ -485,20 +492,23 @@ class PRAWToys(cmd.Cmd): # {{{1
 
             f(self, *args, **kwargs)
 
+        # This was a bitch to debug. The help command reads help from each do_*
+        # command's docstrings.
+        new_f.__doc__ = f.__doc__
+
         return new_f
 
     def do_login(self, arg): # {{{2
-        """login [username] !! BROKEN !!
+        """login
 
-        Log in to your reddit account.
+        Logs in to your reddit account. If this is your first time running
+        login, it'll open a web browser and reddit will ask for permission to
+        log you in.
+
+        Requires praw 3.2 and above. If your praw is outdated, try updating it
+        with:
+        python -m pip install --upgrade praw
         """
-
-        args = arg.split()
-
-        if len(args) > 0:
-            username = args[0]
-        else:
-            username = None
 
         if not check_praw_version('3.2.0'):
             print("This feature only works on praw 3.2 and above.")
@@ -509,16 +519,18 @@ class PRAWToys(cmd.Cmd): # {{{1
         # new feature, you should call o.refresh(force=True) once at the start
         # to make sure praw has a valid refresh token."
         # Source: https://github.com/SmBe19/praw-OAuth2Util/blob/master/OAuth2Util/README.md
-        #
-        # TODO: Currently broken. It tries to find oauth.ini in the current
-        # directory for some reason.
         OAuth2Util.OAuth2Util(self.reddit_session).refresh(force=True)
 
         print("If everything worked, this should be your link karma: ", end='')
         print(self.reddit_session.user.link_karma)
 
     def do_width(self, arg): # {{{2
-        """width [width]: set or view console width"""
+        """width [width]
+
+        Set or view target console width. How many characters wide is your
+        console? Let PRAWToys know and it'll do a better job of printing things
+        for you.
+        """
         global ASSUMED_CONSOLE_WIDTH
         args = arg.split()
 
@@ -530,12 +542,21 @@ class PRAWToys(cmd.Cmd): # {{{1
     # Commands to add items. {{{2
     @logged_in_command # do_saved {{{3
     def do_saved(self, arg):
-        '''saved: get your saved items'''
+        '''saved
+
+        Get your saved items. Must be logged in.
+        '''
         self.add_items(
             self.reddit_session.user.get_saved(limit=None))
 
     def do_user(self, arg): # {{{3
-        '''user <username> [limit=None]: get up to [limit] of a user's submitted items'''
+        '''user <username> [limit=None]
+
+        Get up to [limit] of a user's comments and submissions. If 'limit' is
+        left blank, get ALL of them. Which, by the way, could take awhile.
+        '''
+        # If you change this docstring, also change the ones for
+        # do_user_comments and do_user_submissions.
         # Unit-tested.
         args = arg.split()
         user = self.reddit_session.get_redditor(arg.split()[0])
@@ -548,7 +569,13 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.add_items(list(user.get_overview(limit=limit)))
 
     def do_user_comments(self, arg): # {{{3
-        '''user_comments <username> [limit=None]: get a user's comments'''
+        '''user_comments <username> [limit=None]
+
+        Get up to [limit] of a user's comments. If 'limit' is left blank, get ALL
+        of them. Which, by the way, could take awhile.
+        '''
+        # If you change this docstring, also change the ones for do_user and
+        # do_user_submissions.
         # Unit-tested.
         args = arg.split()
         user = self.reddit_session.get_redditor(arg.split()[0])
@@ -561,7 +588,13 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.add_items(list( user.get_comments(limit=limit) ))
 
     def do_user_submissions(self, arg): # {{{3
-        '''user_submissions <username> [limit=None]: get a user's submissions'''
+        '''user_submissions <username> [limit=None]
+
+        Get up to [limit] of a user's submissions. If 'limit' is left blank,
+        get ALL of them. Which, by the way, could take awhile.
+        '''
+        # If you change this docstring, also change the ones for do_user and
+        # do_user_comments.
         # Unit-tested.
         args = arg.split()
         user = self.reddit_session.get_redditor(arg.split()[0])
@@ -575,12 +608,17 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     @logged_in_command # do_mine {{{3
     def do_mine(self, arg):
-        '''mine: get your own submitted items'''
+        '''mine
+
+        Get your own submissions and comments. Same as "user <your username>".
+        '''
+        # TODO: Add limit and copy over do_user_submissions docstring.
         self.do_user(self.reddit_session.user.name)
 
     @logged_in_command # do_my_submissions {{{3
     def do_my_submissions(self, arg):
         '''my_submissions: get your submissions'''
+        # TODO: Add limit and copy over do_user_submissions docstring.
         if not hasattr(self.reddit_session, 'user'):
             print('You need to be logged in first.')
             return
@@ -590,6 +628,7 @@ class PRAWToys(cmd.Cmd): # {{{1
     @logged_in_command # do_my_comments {{{3
     def do_my_comments(self, arg):
         '''my_coments: get your comments'''
+        # TODO: Add limit and copy over do_user_submissions docstring.
         if not hasattr(self.reddit_session, 'user'):
             print('You need to be logged in first.')
             return
@@ -635,10 +674,11 @@ class PRAWToys(cmd.Cmd): # {{{1
         )
 
     def do_get_from(self, arg): # {{{3
-        '''
-        get_from <subreddit> [n=1000] [sort=hot]: get [n] submissions from
-        /r/<subreddit>, sorting by [sort]. [sort] can be 'hot', 'new', 'top',
-        'controversial', and maybe 'rising' (untested)
+        ''' get_from <subreddit> [n=1000] [sort=hot]
+
+        Get [n] submissions from /r/<subreddit>, sorting by [sort]. [sort] can
+        be 'hot', 'new', 'top', 'controversial', and maybe 'rising' (which is
+        untested).
 
         You can set [n] to 'none' or 'all' (case insensitive) and you'll get
         EVERYTHING from the chosen subreddit. This is obviously going to take
@@ -672,7 +712,8 @@ class PRAWToys(cmd.Cmd): # {{{1
         Load the items stored in <filename>.pickle. This is generally to get
         items stored with the save_to_file command.
 
-        Be careful with openning pickle files from sources you don't trust!
+        Be careful when openning pickle files from sources you don't trust! It's
+        very easy for a hacker to write malicious pickle files.
 
         UNTESTED
         '''
@@ -687,12 +728,16 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     # Commands for filtering. {{{2
     def do_submission(self, arg): # {{{3
-        '''submission: filter out all but links and self posts'''
+        '''submission
+
+        Filter out all but links and self posts.'''
         # Unit-tested.
         self.filter_items(is_submission)
 
     def do_comment(self, arg): # {{{3
-        '''comment: filter out all but comments'''
+        '''comment
+
+        Filter out all but comments.'''
         # Unit-tested.
         self.filter_items(is_comment)
 
@@ -1024,8 +1069,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         else:
             print("Cancelled. Phew.")
 
-# Init code. {{{1
-if __name__ == '__main__':
+if __name__ == '__main__': # {{{1
     import traceback
 
     prawtoys = PRAWToys()
@@ -1034,4 +1078,4 @@ if __name__ == '__main__':
             prawtoys.cmdloop()
             break
         except Exception as err:
-            traceback.print_exc()
+            raceback.print_exc()
