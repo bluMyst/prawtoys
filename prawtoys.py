@@ -199,13 +199,12 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     def __init__(self, *args, **kwargs): # {{{2
         """ See cmd.Cmd.__init__ for valid arguments """
-        # Don't use raw input if we can use the better alternative. (readline)
-
         # This is arguably more readable than having an if/else, but I'll
         # understand if you don't like the way it looks.
         can_use_readline = (isinstance(sys.stdout.write, collections.Callable)
             and isinstance(sys.stdin.readline, collections.Callable))
 
+        # Don't use raw input if we can use readline, the better alternative.
         self.use_rawinput = not can_use_readline
 
         self.items = []
