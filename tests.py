@@ -1,8 +1,11 @@
 # vim: foldmethod=marker
 # Imports. {{{1
 import unittest
-import prawtoys
 import praw
+import io
+
+import prawtoys
+import praw_tools
 
 # Lookalike classes. {{{1
 class SubredditLookalike(object): # {{{2
@@ -42,24 +45,29 @@ class SubmissionLookalike(PostLookalike): # {{{2
         super(SubmissionLookalike, self).__init__(subreddit)
 
 # Monkey patch is_comment and is_submission to recognize the Lookalikes. {{{1
-is_comment_backup = prawtoys.is_comment
+is_comment_backup = praw_tools.is_comment
 def is_comment(submission):
     return (isinstance(submission, CommentLookalike) or
         is_comment_backup(submission))
-prawtoys.is_comment = is_comment
+praw_tools.is_comment = is_comment
 
-is_submission_backup = prawtoys.is_submission
+is_submission_backup = praw_tools.is_submission
 def is_submission(submission):
     return (isinstance(submission, SubmissionLookalike) or
         is_submission_backup(submission))
-prawtoys.is_submission = is_submission
+praw_tools.is_submission = is_submission
 
 # The actual tests. {{{1
 class GenericPRAWToysTest(unittest.TestCase): # {{{2
     def setUp(self):
         ''' This gets run before every test_* function. '''
+        if hasattr(self, 'output'):
+            self.output.close()
+
+        self.output = io.StringIO()
+
         if not hasattr(self, 'prawtoys'):
-            self.prawtoys = prawtoys.PRAWToys()
+            self.prawtoys = prawtoys.PRAWToys(stdout=self.output)
         else:
             self.reset()
 
@@ -127,10 +135,10 @@ class TestOffline(GenericPRAWToysTest): # {{{2
         dt = self.data_tester(test_data)
 
         dt('nsfw', lambda i:
-            is_comment(i) or i.over_18)
+            praw_tools.is_comment(i) or i.over_18)
 
         dt('sfw', lambda i:
-            is_comment(i) or not i.over_18)
+            praw_tools.is_comment(i) or not i.over_18)
 
     def test_self_nself(self):
         dt = self.data_tester([
@@ -149,8 +157,8 @@ class TestOffline(GenericPRAWToysTest): # {{{2
         test_data  = [CommentLookalike(i, i, i)    for i in self.TEST_DATA]
         test_data += [SubmissionLookalike(i, i, i) for i in self.TEST_DATA]
 
-        self.data_tester(test_data)('submission', prawtoys.is_submission)
-        self.data_tester(test_data)('comment',    prawtoys.is_comment)
+        self.data_tester(test_data)('submission', praw_tools.is_submission)
+        self.data_tester(test_data)('comment',    praw_tools.is_comment)
 
 class TestOnline(GenericPRAWToysTest): # {{{2
     def test_user(self):
@@ -165,7 +173,7 @@ class TestOnline(GenericPRAWToysTest): # {{{2
         self.assertTrue(len(self.prawtoys.items) == 10)
 
         self.assert_all_items(lambda i:
-            prawtoys.is_comment(i)
+            praw_tools.is_comment(i)
             and i.author.name == 'winter_mutant')
 
     def test_user_submissions(self):
@@ -173,7 +181,7 @@ class TestOnline(GenericPRAWToysTest): # {{{2
         self.assertTrue(len(self.prawtoys.items) == 10)
 
         self.assert_all_items(lambda i:
-            prawtoys.is_submission(i)
+            praw_tools.is_submission(i)
             and i.author.name == 'winter_mutant')
 
     def test_get_from(self):
