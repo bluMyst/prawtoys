@@ -1,3 +1,5 @@
+import praw
+
 # When displaying comments/submissions, how many characters should we show?
 # I.E., how many characters wide should we assume the user's terminal window is?
 ASSUMED_CONSOLE_WIDTH = 80
