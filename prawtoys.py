@@ -223,13 +223,12 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.print(prompt, end="")
         self.stdin.readline()
 
-    # General settings. {{{2
-    def emptyline(self): # {{{3
+    def emptyline(self): # {{{2
         # Disable empty line repeating the last command. Who thought that was a
         # good default?
         pass
 
-    def postcmd(self, r, l): # {{{3
+    def postcmd(self, r, l): # {{{2
         ''' Runs after every command.
 
         Just updates the prompt to show the current number of items in
@@ -246,7 +245,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         # but safer (and more maintainable!) approach.
         self.update_prompt()
 
-    def do_EOF(self, arg): # {{{3
+    def do_EOF(self, arg): # {{{2
         # If the user types an EOF character, exit PRAWToys.
         exit(0)
     do_exit = do_EOF
