@@ -940,12 +940,18 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     def do_lsub(self, arg): # {{{3
         '''lsub <sub>...: show all items from the given sub(s)'''
+        # TODO: Refactor! This is so ugly.
         subs = arg.split()
         items_with_indicies = enumerate(self.items)
         items_with_indicies = [(i, v) for i, v in items_with_indicies if
             v.subreddit.display_name.lower() in subs]
 
-        rjust = len(str(max(i for i, v in items_with_indicies)))
+        if len(items_with_indicies) <= 0:
+            self.print('Nothing matched.')
+            return
+
+        rjust = max(i for i, v in items_with_indicies)
+        rjust = len(str(rjust))
         for i, v in items_with_indicies:
             self.print_item(i, v, rjust)
 
