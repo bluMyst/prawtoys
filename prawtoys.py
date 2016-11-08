@@ -76,8 +76,8 @@ def check_praw_version(min_version): # {{{2
         raise RuntimeError('Unable to parse praw.__version__: '
             + repr(praw.__version__))
 
-    for min, praw in zip(min_version, praw_version):
-        if praw < min:
+    for min, praw_ in zip(min_version, praw_version):
+        if praw_ < min:
             return False
 
     return True
@@ -1072,9 +1072,14 @@ if __name__ == '__main__': # {{{1
     import traceback
 
     prawtoys = PRAWToys()
-    while True:
-        try:
-            prawtoys.cmdloop()
-            break
-        except Exception as err:
-            raceback.print_exc()
+
+    if sys.argv[1].lower() == 'debug':
+        prawtoys.cmdloop()
+    else:
+        while True:
+            try:
+                prawtoys.cmdloop()
+            except Exception as err:
+                traceback.print_exc()
+            else:
+                break
