@@ -961,11 +961,8 @@ class PRAWToys(cmd.Cmd): # {{{1
             html_file.write('<html><body>')
 
             for item in target_items:
-                item_string = praw_object_to_string(item).encode(
-                    encoding='ascii', errors='xmlcharrefreplace')
-
-                item_url = praw_object_url(item).encode(
-                    'ascii', 'xmlcharrefreplace')
+                item_string = praw_object_to_string(item)
+                item_url = praw_object_url(item)
 
                 html_file.write(
                     '<a href="{item_url}">{item_string}</a><br>'.format(
