@@ -21,7 +21,6 @@
 # TODO: unittests for the rm command.
 # TODO: Test PRAWToys.input and migrate code over to using it. If any code even
 #       needs input().
-# TODO: Same but for PRAWToys.print. This one should be easy.
 # TODO: All docstrings should be in this format:
 #       '''f(oo) <bar> [baz]
 #
@@ -258,7 +257,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         if hasattr(self, 'old_items'):
             self.items = self.old_items[:]
         else:
-            print('No undo history found. Nothing to undo.')
+            self.print('No undo history found. Nothing to undo.')
     do_u = do_undo
 
     def do_reset(self, arg): # {{{3
@@ -275,7 +274,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         Execute <command> as python code and pretty-print the result (if any).
         '''
         try:
-            pprint(eval(arg))
+            pprint(eval(arg), stream=self.stdout)
         except SyntaxError:
             # If 'arg' doesn't return a value, eval(arg) will raise a
             # SyntaxError. So instead, just exec() it and don't print the
@@ -469,7 +468,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         #       unicode characters to the console. Try using str.encode and/or
         #       str.decode.
         item_str = praw_object_to_string(item, index_rjust+2)
-        print('{index_str}: {item_str}'.format(**locals()))
+        self.print('{index_str}: {item_str}'.format(**locals()))
 
     def logged_in_command(f): # {{{3
         """ A decorator for commands that need the user to be logged in.
@@ -485,7 +484,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         def new_f(self, *args, **kwargs):
             if (not hasattr(self.reddit_session, 'user')
                     or not self.reddit_session.user):
-                print('You need to be logged in first. Try typing "help login".')
+                self.print('You need to be logged in first. Try typing "help login".')
                 return
 
             f(self, *args, **kwargs)
@@ -509,7 +508,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         """
 
         if not check_praw_version('3.2.0'):
-            print("This feature only works on praw 3.2 and above.")
+            self.print("This feature only works on praw 3.2 and above.")
             return
 
         # "Starting with version 3.2 praw will refresh the token automatically
@@ -519,8 +518,8 @@ class PRAWToys(cmd.Cmd): # {{{1
         # Source: https://github.com/SmBe19/praw-OAuth2Util/blob/master/OAuth2Util/README.md
         OAuth2Util.OAuth2Util(self.reddit_session).refresh(force=True)
 
-        print("If everything worked, this should be your link karma: ", end='')
-        print(self.reddit_session.user.link_karma)
+        self.print("If everything worked, this should be your link karma: ", end='')
+        self.print(self.reddit_session.user.link_karma)
 
     def do_width(self, arg): # {{{2
         """width [width]
@@ -535,7 +534,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         if len(args) > 0:
             ASSUMED_CONSOLE_WIDTH = int(args[0])
         else:
-            print("width =", ASSUMED_CONSOLE_WIDTH)
+            self.print("width =", ASSUMED_CONSOLE_WIDTH)
 
     # Commands to add items. {{{2
     @logged_in_command # do_saved {{{3
@@ -618,7 +617,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         '''my_submissions: get your submissions'''
         # TODO: Add limit and copy over do_user_submissions docstring.
         if not hasattr(self.reddit_session, 'user'):
-            print('You need to be logged in first.')
+            self.print('You need to be logged in first.')
             return
 
         self.do_user_submissions(self.reddit_session.user.name)
@@ -628,7 +627,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         '''my_coments: get your comments'''
         # TODO: Add limit and copy over do_user_submissions docstring.
         if not hasattr(self.reddit_session, 'user'):
-            print('You need to be logged in first.')
+            self.print('You need to be logged in first.')
             return
 
         self.do_user_comments(self.reddit_session.user.name)
@@ -639,7 +638,7 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         args = arg.split()
         sub_id = args[0]
-        print('Retrieving thread id: {sub_id}'.format(**locals()))
+        self.print('Retrieving thread id: {sub_id}'.format(**locals()))
 
         try:
             n = int(args[1])
@@ -649,7 +648,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         sub = praw.objects.Submission.from_id(
                 self.reddit_session, sub_id)
 
-        print('Retrieving comments...')
+        self.print('Retrieving comments...')
         #while True:
         #    coms = praw.helpers.flatten_tree(sub.comments)
         #    ncoms = 0
@@ -658,12 +657,12 @@ class PRAWToys(cmd.Cmd): # {{{1
         #        if type(i) != praw.objects.MoreComments:
         #            ncoms += 1
 
-        #    print '\r{ncoms}/{n}'.format(**locals()),
+        #    self.print '\r{ncoms}/{n}'.format(**locals()),
 
         #    if ncoms >= n: break
         #    sub.replace_more_comments(limit=1)
 
-        #print
+        #self.print()
 
         #self.add_items(list(coms))
         self.add_items(
@@ -718,7 +717,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         try:
             filename = arg.split()[0] + '.pickle'
         except IndexError:
-            print('No file specified!')
+            self.print('No file specified!')
             return
 
         with open(filename, 'rb') as file_:
@@ -851,7 +850,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         items_len = len(self.items)
         for i in indicies:
             if i < 0 or i > items_len-1:
-                print("Out of range:", i)
+                self.print("Out of range:", i)
                 return
 
         self.old_items = self.items[:]
@@ -932,7 +931,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         max_number_length = len(str(len(self.items)))
 
         for sub, number in frequency_by_sub:
-            print('{number} : /r/{sub}'.format(sub=sub,
+            self.print('{number} : /r/{sub}'.format(sub=sub,
                     number=str(number).rjust(max_number_length)))
     do_vs = do_view_subs # {{{3
 
@@ -1027,7 +1026,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         try:
             filename = arg.split()[0] + '.pickle'
         except ValueError:
-            print('No file specified!')
+            self.print('No file specified!')
             return
 
         with open(filename, 'wb') as file_:
@@ -1042,13 +1041,13 @@ class PRAWToys(cmd.Cmd): # {{{1
         Note: Untested for comments.
         '''
 
-        print("You're about to upvote EVERYTHING in the current list.")
+        self.print("You're about to upvote EVERYTHING in the current list.")
         continue_ = ahto_lib.yes_no(False, "Do you really want to continue?")
 
         if continue_:
             ahto_lib.progress_map( (lambda i: i.upvote()), self.items )
         else:
-            print("Cancelled. Phew.")
+            self.print("Cancelled. Phew.")
 
     @logged_in_command # do_clear_vote {{{3
     def do_clear_vote(self, arg):
@@ -1065,14 +1064,14 @@ class PRAWToys(cmd.Cmd): # {{{1
         if continue_:
             ahto_lib.progress_map( (lambda i: i.clear_vote()), self.items )
         else:
-            print("Cancelled. Phew.")
+            self.print("Cancelled. Phew.")
 
 if __name__ == '__main__': # {{{1
     import traceback
 
     prawtoys = PRAWToys()
 
-    if sys.argv[1].lower() == 'debug':
+    if len(sys.argv) > 1 and sys.argv[1].lower() == 'debug':
         prawtoys.cmdloop()
     else:
         while True:
