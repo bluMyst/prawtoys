@@ -17,7 +17,6 @@
 #       thread is waiting on the server.
 # TODO: sfw and nsfw should filter out comments based on the thread type. Same
 #       for title and ntitle.
-# TODO: Use OAuth because now the login command is broken. :(
 # TODO: unittests for the thread command.
 # TODO: unittests for the rm command.
 # TODO: Test PRAWToys.input and migrate code over to using it. If any code even
@@ -195,7 +194,7 @@ def praw_object_url(praw_object): # {{{2
 
 class PRAWToys(cmd.Cmd): # {{{1
     prompt = '0> '
-    VERSION = "PRAWToys 2.0.0"
+    VERSION = "PRAWToys 2.0.1"
 
     def __init__(self, *args, **kwargs): # {{{2
         """ See cmd.Cmd.__init__ for valid arguments """
