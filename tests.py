@@ -82,7 +82,7 @@ class GenericPRAWToysTest(unittest.TestCase): # {{{2
         for i in self.prawtoys.items:
             self.assertTrue( f(i) )
 
-class TestOffline(GenericPRAWToysTest): # {{{2
+class Offline(GenericPRAWToysTest): # {{{2
     TEST_DATA      = ['foo', 'bar', 'baz', 'foo', 'qux', '\xfcmlaut']
     BOOL_TEST_DATA = [True, True, False, True, False, False, True]
 
@@ -92,6 +92,14 @@ class TestOffline(GenericPRAWToysTest): # {{{2
         self.assertTrue(self.prawtoys.items == [])
 
     def data_tester(self, data):
+        '''Example of how this is used:
+
+        dt = self.data_tester(
+            [SubmissionLookalike(subreddit=i) for i in self.TEST_DATA])
+
+        dt('sub foo bar', lambda i:
+            i.subreddit.display_name.lower() in ['foo', 'bar'])
+        '''
         def func(cmd_string, lambda_func):
             self.prawtoys.items = data[:]
             self.cmd(cmd_string)
@@ -112,8 +120,8 @@ class TestOffline(GenericPRAWToysTest): # {{{2
             i.subreddit.display_name.lower() not in ['foo', 'bar'])
 
     def test_title_ntitle(self):
-        dt = self.data_tester([
-            SubmissionLookalike(title=i) for i in self.TEST_DATA])
+        dt = self.data_tester(
+            [SubmissionLookalike(title=i) for i in self.TEST_DATA])
 
         dt('title foo', lambda i: 'foo' in i.title)
 
@@ -141,11 +149,27 @@ class TestOffline(GenericPRAWToysTest): # {{{2
             praw_tools.is_comment(i) or not i.over_18)
 
     def test_self_nself(self):
-        dt = self.data_tester([
-            SubmissionLookalike(is_self=i) for i in self.BOOL_TEST_DATA])
+        dt = self.data_tester(
+            [SubmissionLookalike(is_self=i) for i in self.BOOL_TEST_DATA])
 
         dt('self', lambda i: i.is_self)
         dt('nself', lambda i: not i.is_self)
+
+    def test_undo(self):
+        def test_undo_on(cmd, data):
+            self.prawtoys.items = data[:]
+
+            self.cmd(cmd)
+            self.assertTrue(self.prawtoys.items != data)
+
+            self.cmd('undo')
+            self.assertTrue(self.prawtoys.items == data)
+
+        test_undo_on('title foo',
+            [SubmissionLookalike(title=i) for i in self.TEST_DATA])
+
+        test_undo_on('sfw',
+            [SubmissionLookalike(over_18=i) for i in self.BOOL_TEST_DATA])
 
     def test_x(self):
         self.cmd('x self.test_worked = True')
@@ -160,7 +184,7 @@ class TestOffline(GenericPRAWToysTest): # {{{2
         self.data_tester(test_data)('submission', praw_tools.is_submission)
         self.data_tester(test_data)('comment',    praw_tools.is_comment)
 
-class TestOnline(GenericPRAWToysTest): # {{{2
+class Online(GenericPRAWToysTest): # {{{2
     def test_user(self):
         self.cmd('user winter_mutant 10')
         self.assertTrue(len(self.prawtoys.items) == 10)

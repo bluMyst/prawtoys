@@ -114,6 +114,7 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         Resets the item list one change back in time.
         '''
+        # Unit-tested.
         if hasattr(self, 'old_items'):
             self.items = self.old_items[:]
         else:
