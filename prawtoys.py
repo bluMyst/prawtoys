@@ -210,6 +210,9 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         super(PRAWToys, self).__init__(self, *args, **kwargs)
 
+        self.print(self.VERSION)
+        self.print()
+
     def print(self, *args, **kwargs): # {{{2
         """ A version of print that always uses self.stdout """
         kwargs['file'] = self.stdout
