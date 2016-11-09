@@ -81,7 +81,7 @@ class GenericPRAWToysTest(unittest.TestCase): # {{{2
     def reset(self):
         return self.cmd('reset')
 
-    def assert_all_items(self, f):
+    def assertAllItems(self, f):
         for i in self.prawtoys.items:
             self.assertTrue( f(i) )
 
