@@ -199,7 +199,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         # TODO: This code might crash on some systems because it might print
         #       unicode characters to the console. Try using str.encode and/or
         #       str.decode.
-        item_str = praw_object_to_string(item, index_rjust+2)
+        item_str = praw_tools.praw_object_to_string(item, index_rjust+2)
         self.safe_print('{index_str}: {item_str}'.format(**locals()))
 
     def logged_in_command(f): # {{{2
@@ -423,13 +423,12 @@ class PRAWToys(cmd.Cmd): # {{{1
         console? Let PRAWToys know and it'll do a better job of printing things
         for you.
         """
-        global ASSUMED_CONSOLE_WIDTH
         args = arg.split()
 
         if len(args) > 0:
-            ASSUMED_CONSOLE_WIDTH = int(args[0])
+            praw_tools.ASSUMED_CONSOLE_WIDTH = int(args[0])
         else:
-            self.print("width =", ASSUMED_CONSOLE_WIDTH)
+            self.print("width =", praw_tools.ASSUMED_CONSOLE_WIDTH)
 
     # Commands to add items. {{{2
     @logged_in_command # do_saved {{{3
