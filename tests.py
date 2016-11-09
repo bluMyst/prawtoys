@@ -194,14 +194,14 @@ class Online(GenericPRAWToysTest): # {{{2
         self.cmd('user winter_mutant 10')
         self.assertTrue(len(self.prawtoys.items) == 10)
 
-        self.assert_all_items(lambda i:
+        self.assertAllItems(lambda i:
             i.author.name == 'winter_mutant')
 
     def test_user_comments(self):
         self.cmd('user_comments winter_mutant 10')
         self.assertTrue(len(self.prawtoys.items) == 10)
 
-        self.assert_all_items(lambda i:
+        self.assertAllItems(lambda i:
             praw_tools.is_comment(i)
             and i.author.name == 'winter_mutant')
 
