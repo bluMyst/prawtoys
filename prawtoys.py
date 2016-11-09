@@ -52,6 +52,8 @@ import ahto_lib
 # I.E., how many characters wide should we assume the user's terminal window is?
 ASSUMED_CONSOLE_WIDTH = 80
 
+VERSION = "PRAWToys 2.0.1"
+
 def check_praw_version(min_version): # {{{2
     ''' Checks if the current praw version is at least min_version.
 
@@ -193,12 +195,14 @@ def praw_object_url(praw_object): # {{{2
 
 class PRAWToys(cmd.Cmd): # {{{1
     prompt = '0> '
-    VERSION = "PRAWToys 2.0.1"
 
     def __init__(self, *args, **kwargs): # {{{2
         """ See cmd.Cmd.__init__ for valid arguments """
         # This is arguably more readable than having an if/else, but I'll
         # understand if you don't like the way it looks.
+        global VERSION
+        self.VERSION = VERSION
+
         can_use_readline = (isinstance(sys.stdout.write, collections.Callable)
             and isinstance(sys.stdin.readline, collections.Callable))
 
