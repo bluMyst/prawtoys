@@ -59,17 +59,20 @@ praw_tools.is_submission = is_submission
 
 # The actual tests. {{{1
 class GenericPRAWToysTest(unittest.TestCase): # {{{2
+    def __init__(self, *args, **kwargs):
+        """ Same arguments as unittest.TestCase """
+        self.output   = io.StringIO()
+        self.prawtoys = prawtoys.PRAWToys(stdout=self.output)
+
+        super(GenericPRAWToysTest, self).__init__(*args, **kwargs)
+
     def setUp(self):
         ''' This gets run before every test_* function. '''
-        if hasattr(self, 'output'):
-            self.output.close()
+        pass
 
-        self.output = io.StringIO()
-
-        if not hasattr(self, 'prawtoys'):
-            self.prawtoys = prawtoys.PRAWToys(stdout=self.output)
-        else:
-            self.reset()
+    def tearDown(self):
+        ''' This gets run after every test_* function. '''
+        self.output.truncate(0)
 
     def cmd(self, *args, **kwargs):
         ''' Shortcut for self.prawtoys.onecmd '''
