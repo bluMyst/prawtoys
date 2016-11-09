@@ -192,6 +192,18 @@ class Offline(GenericPRAWToysTest): # {{{2
         self.cmd('x self.test_worked')
         self.assertInOutput('True\n')
 
+    def test_width(self):
+        self.cmd('width')
+        self.assertInOutput(
+            'width = ' + str(prawtoys.praw_tools.ASSUMED_CONSOLE_WIDTH) + '\n')
+
+        old_width = prawtoys.praw_tools.ASSUMED_CONSOLE_WIDTH
+        self.cmd('width 120')
+        self.assertTrue(prawtoys.praw_tools.ASSUMED_CONSOLE_WIDTH == 120)
+
+        self.cmd('width ' + str(old_width))
+        self.assertTrue(prawtoys.praw_tools.ASSUMED_CONSOLE_WIDTH == old_width)
+
     def test_submission_and_comment(self):
         test_data  = [CommentLookalike(i, i, i)    for i in self.TEST_DATA]
         test_data += [SubmissionLookalike(i, i, i) for i in self.TEST_DATA]

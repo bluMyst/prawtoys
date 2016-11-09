@@ -245,6 +245,7 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         Clear all items from the item list.
         '''
+        # Unit-tested.
         self.items = []
 
     # Debug commands. {{{2
