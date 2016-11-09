@@ -207,6 +207,8 @@ class Online(GenericPRAWToysTest): # {{{2
         self.assertAllItems(lambda i:
             i.author.name == 'winter_mutant')
 
+        self.cmd('ls')
+
     def test_user_comments(self):
         self.cmd('user_comments winter_mutant 10')
         self.assertTrue(len(self.prawtoys.items) == 10)
@@ -214,6 +216,8 @@ class Online(GenericPRAWToysTest): # {{{2
         self.assertAllItems(lambda i:
             praw_tools.is_comment(i)
             and i.author.name == 'winter_mutant')
+
+        self.cmd('ls')
 
     def test_user_submissions(self):
         self.cmd('user_submissions winter_mutant 10')
@@ -223,11 +227,14 @@ class Online(GenericPRAWToysTest): # {{{2
             praw_tools.is_submission(i)
             and i.author.name == 'winter_mutant')
 
+        self.cmd('ls')
+
     def test_get_from(self):
         def creatively_named_function(cmd_string, limit, lambda_func):
             self.cmd(cmd_string)
             self.assertTrue(len(self.prawtoys.items) == limit)
             self.assertAllItems(lambda_func)
+            self.cmd('ls')
             self.reset()
 
         creatively_named_function('get_from askreddit 10 top', 10, lambda i:
