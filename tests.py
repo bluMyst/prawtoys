@@ -108,7 +108,7 @@ class Offline(GenericPRAWToysTest): # {{{2
         def func(cmd_string, lambda_func):
             self.prawtoys.items = data[:]
             self.cmd(cmd_string)
-            self.assert_all_items(lambda_func)
+            self.assertAllItems(lambda_func)
 
         return func
 
@@ -217,7 +217,7 @@ class Online(GenericPRAWToysTest): # {{{2
         def creatively_named_function(cmd_string, limit, lambda_func):
             self.cmd(cmd_string)
             self.assertTrue(len(self.prawtoys.items) == limit)
-            self.assert_all_items(lambda_func)
+            self.assertAllItems(lambda_func)
             self.reset()
 
         creatively_named_function('get_from askreddit 10 top', 10, lambda i:
