@@ -209,7 +209,7 @@ class Online(GenericPRAWToysTest): # {{{2
         self.cmd('user_submissions winter_mutant 10')
         self.assertTrue(len(self.prawtoys.items) == 10)
 
-        self.assert_all_items(lambda i:
+        self.assertAllItems(lambda i:
             praw_tools.is_submission(i)
             and i.author.name == 'winter_mutant')
 
