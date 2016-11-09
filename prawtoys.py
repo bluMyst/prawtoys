@@ -217,10 +217,41 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.print(self.VERSION)
         self.print()
 
-    def print(self, *args, **kwargs): # {{{2
-        """ A version of print that always uses self.stdout """
-        kwargs['file'] = self.stdout
-        return print(*args, **kwargs)
+    def print(self, *args, file=None, **kwargs): # {{{2
+        """ A version of print that defaults to using self.stdout
+
+        Takes the same args and kwargs as print.
+        """
+        if file == None:
+            file = self.stdout
+
+        return print(*args, file=file, **kwargs)
+
+    def safe_print(self, *args, file=None, sep=' ', end='\n'): # {{{2
+        """ This is a print emulator that handles Unicode safely.
+
+        Some systems *cough* Windows *cough* don't allow printing of unicode
+        characters to stdout, so this function will automatically convert to
+        stdout's actual encoding, and even automatically convert invalid
+        characters to question marks.
+
+        >>> pt = PRAWToys()
+        >>> pt.print('\u0140')
+        UnicodeEncodeError: 'charmap' codec can't encode character '\u0140' in
+        position 0: character maps to <undefined>
+        >>> pt.safe_print('\u0140')
+        ?
+        """
+        if file == None:
+            file = self.stdout
+
+        encoder = lambda s: s.encode(file.encoding, errors='replace')
+
+        sep  = encoder(sep)
+        end  = encoder(end)
+        args = map(encoder, args)
+
+        self.stdout.buffer.write( sep.join(args) + end )
 
     def input(self, prompt=""): # {{{2
         """ A version of input that always uses self.stdin UNTESTED """
