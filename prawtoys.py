@@ -1114,6 +1114,8 @@ if __name__ == '__main__': # {{{1
     prawtoys = PRAWToys()
 
     if len(sys.argv) > 1 and sys.argv[1].lower() == 'debug':
+        # Crash on error messages so pdb can do a post-mortem.
+        print('Debug mode enabled.')
         prawtoys.cmdloop()
     else:
         while True:
