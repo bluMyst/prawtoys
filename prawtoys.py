@@ -990,10 +990,12 @@ class PRAWToys(cmd.Cmd): # {{{1
             self.print_item(i, v, rjust)
 
     def do_get_links(self, arg): # {{{3
-        '''
-            get_links [sub]...: generates an HTML file with all the links to
-            everything (or everything in a given subreddit(s)) and opens it in
-            your default browser.
+        ''' get_links [sub]...
+
+        gl is an alias for this command.
+
+        Generates an HTML file with all the links to everything (or everything
+        in a given subreddit(s)) and opens it in your default browser.
         '''
         target_items = self.arg_to_matching_subs(arg)
 
