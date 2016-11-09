@@ -50,12 +50,14 @@ import praw_tools
 
 class PRAWToys(cmd.Cmd): # {{{1
     prompt = '0> '
-    VERSION = "PRAWToys 2.0.1"
 
     def __init__(self, *args, **kwargs): # {{{2
         """ See cmd.Cmd.__init__ for valid arguments """
         # This is arguably more readable than having an if/else, but I'll
         # understand if you don't like the way it looks.
+        global VERSION
+        self.VERSION = VERSION
+
         can_use_readline = (isinstance(sys.stdout.write, collections.Callable)
             and isinstance(sys.stdin.readline, collections.Callable))
 
@@ -70,10 +72,41 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.print(self.VERSION)
         self.print()
 
-    def print(self, *args, **kwargs): # {{{2
-        """ A version of print that always uses self.stdout """
-        kwargs['file'] = self.stdout
-        return print(*args, **kwargs)
+    def print(self, *args, file=None, **kwargs): # {{{2
+        """ A version of print that defaults to using self.stdout
+
+        Takes the same args and kwargs as print.
+        """
+        if file == None:
+            file = self.stdout
+
+        return print(*args, file=file, **kwargs)
+
+    def safe_print(self, *args, file=None, sep=' ', end='\n'): # {{{2
+        """ This is a print emulator that handles Unicode safely.
+
+        Some systems *cough* Windows *cough* don't allow printing of unicode
+        characters to stdout, so this function will automatically convert to
+        stdout's actual encoding, and even automatically convert invalid
+        characters to question marks.
+
+        >>> pt = PRAWToys()
+        >>> pt.print('\u0140')
+        UnicodeEncodeError: 'charmap' codec can't encode character '\u0140' in
+        position 0: character maps to <undefined>
+        >>> pt.safe_print('\u0140')
+        ?
+        """
+        if file == None:
+            file = self.stdout
+
+        encoder = lambda s: s.encode(file.encoding, errors='replace')
+
+        sep  = encoder(sep)
+        end  = encoder(end)
+        args = map(encoder, args)
+
+        self.stdout.buffer.write( sep.join(args) + end )
 
     def input(self, prompt=""): # {{{2
         """ A version of input that always uses self.stdin UNTESTED """
@@ -106,6 +139,91 @@ class PRAWToys(cmd.Cmd): # {{{1
         # If the user types an EOF character, exit PRAWToys.
         exit(0)
     do_exit = do_EOF
+
+    def update_prompt(self): # {{{2
+        """ Change the prompt to show how many matches there are. """
+        items_len = str(len(self.items))
+        self.prompt = items_len + '> '
+
+    def add_items(self, l): # {{{2
+        self.old_items = self.items[:]
+        self.items += list(l)
+
+    def filter_items(self, f, invert=False): # {{{2
+        if invert:
+            new_items = itertools.filterfalse(f, self.items)
+        else:
+            new_items = filter(f, self.items)
+
+        self.old_items = self.items
+        self.items = list(new_items)
+
+    def get_items_from_subs(self, *subs): # {{{2
+        '''given a list of subs, return all stored items from those subs'''
+        subs = [i.lower() for i in subs]
+        filter_func = lambda i: i.subreddit.display_name.lower() in subs
+        return list(filter(filter_func, self.items))
+
+    def arg_to_matching_subs(self, subs_string=None): # {{{2
+        '''
+        given a string like 'aww askreddit creepy', returns all items from those
+        subreddits. If no subs_string is given, or the subs_string is
+        empty/all whitespace, just return self.items.
+        '''
+        if subs_string:
+            subs = subs_string.split()
+
+            if len(subs_string) > 0:
+                return self.get_items_from_subs(*subs)
+
+        return self.items
+
+    def print_item(self, index, item=None, index_rjust=None): # {{{2
+        ''' index_rjust is how far to rjust the index number. If it's None,
+        we'll just rjust it based on the highest index in self.items
+
+        If that doesn't make any sense, just keep it as None and you should be
+        fine.
+        '''
+
+        if item == None:
+            item = self.items[index]
+
+        if index_rjust == None:
+            index_rjust = len(str(len(self.items)))
+
+        index_str = str(index).rjust(index_rjust)
+
+        # TODO: This code might crash on some systems because it might print
+        #       unicode characters to the console. Try using str.encode and/or
+        #       str.decode.
+        item_str = praw_object_to_string(item, index_rjust+2)
+        self.safe_print('{index_str}: {item_str}'.format(**locals()))
+
+    def logged_in_command(f): # {{{2
+        """ A decorator for commands that need the user to be logged in.
+
+        Checks if the user is logged in. If so, runs the function. If not,
+        prints an error and returns.
+
+        Since decorators are run on methods before there's any 'self' to speak
+        of, this decorator doesn't take 'self' as an argument. If it did, it
+        wouldn't work.
+        """
+
+        def new_f(self, *args, **kwargs):
+            if (not hasattr(self.reddit_session, 'user')
+                    or not self.reddit_session.user):
+                self.print('You need to be logged in first. Try typing "help login".')
+                return
+
+            f(self, *args, **kwargs)
+
+        # This was a bitch to debug. The help command reads help from each do_*
+        # command's docstrings.
+        new_f.__doc__ = f.__doc__
+
+        return new_f
 
     # Undo and reset. {{{2
     def do_undo(self, arg): # {{{3
@@ -269,91 +387,6 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.print_topics('Uncategorized commands.', misc_commands, 15,80)
         self.print_topics(self.misc_header, list(help.keys()), 15,80)
         self.print_topics(self.undoc_header, undocumented_commands, 15,80)
-
-    def update_prompt(self): # {{{3
-        """ Change the prompt to show how many matches there are. """
-        items_len = str(len(self.items))
-        self.prompt = items_len + '> '
-
-    def add_items(self, l): # {{{3
-        self.old_items = self.items[:]
-        self.items += list(l)
-
-    def filter_items(self, f, invert=False): # {{{3
-        if invert:
-            new_items = itertools.filterfalse(f, self.items)
-        else:
-            new_items = filter(f, self.items)
-
-        self.old_items = self.items
-        self.items = list(new_items)
-
-    def get_items_from_subs(self, *subs): # {{{3
-        '''given a list of subs, return all stored items from those subs'''
-        subs = [i.lower() for i in subs]
-        filter_func = lambda i: i.subreddit.display_name.lower() in subs
-        return list(filter(filter_func, self.items))
-
-    def arg_to_matching_subs(self, subs_string=None): # {{{3
-        '''
-        given a string like 'aww askreddit creepy', returns all items from those
-        subreddits. If no subs_string is given, or the subs_string is
-        empty/all whitespace, just return self.items.
-        '''
-        if subs_string:
-            subs = subs_string.split()
-
-            if len(subs_string) > 0:
-                return self.get_items_from_subs(*subs)
-
-        return self.items
-
-    def print_item(self, index, item=None, index_rjust=None): # {{{3
-        ''' index_rjust is how far to rjust the index number. If it's None,
-        we'll just rjust it based on the highest index in self.items
-
-        If that doesn't make any sense, just keep it as None and you should be
-        fine.
-        '''
-
-        if item == None:
-            item = self.items[index]
-
-        if index_rjust == None:
-            index_rjust = len(str(len(self.items)))
-
-        index_str = str(index).rjust(index_rjust)
-
-        # TODO: This code might crash on some systems because it might print
-        #       unicode characters to the console. Try using str.encode and/or
-        #       str.decode.
-        item_str = praw_tools.praw_object_to_string(item, index_rjust+2)
-        self.print('{index_str}: {item_str}'.format(**locals()))
-
-    def logged_in_command(f): # {{{3
-        """ A decorator for commands that need the user to be logged in.
-
-        Checks if the user is logged in. If so, runs the function. If not,
-        prints an error and returns.
-
-        Since decorators are run on methods before there's any 'self' to speak
-        of, this decorator doesn't take 'self' as an argument. If it did, it
-        wouldn't work.
-        """
-
-        def new_f(self, *args, **kwargs):
-            if (not hasattr(self.reddit_session, 'user')
-                    or not self.reddit_session.user):
-                self.print('You need to be logged in first. Try typing "help login".')
-                return
-
-            f(self, *args, **kwargs)
-
-        # This was a bitch to debug. The help command reads help from each do_*
-        # command's docstrings.
-        new_f.__doc__ = f.__doc__
-
-        return new_f
 
     def do_login(self, arg): # {{{2
         """login
@@ -813,15 +846,21 @@ class PRAWToys(cmd.Cmd): # {{{1
             self.print_item(i, v, rjust)
 
     def do_get_links(self, arg): # {{{3
-        '''
-            get_links [sub]...: generates an HTML file with all the links to
-            everything (or everything in a given subreddit(s)) and opens it in
-            your default browser.
+        ''' get_links [sub]...
+
+        gl is an alias for this command.
+
+        Generates an HTML file with all the links to everything (or everything
+        in a given subreddit(s)) and opens it in your default browser.
         '''
         target_items = self.arg_to_matching_subs(arg)
 
-        with open('urls.html', 'w') as html_file:
-            html_file.write('<html><body>')
+        with open('urls.html', 'w', encoding='utf-8') as html_file:
+            html_file.write(
+                '<html>\n'
+                '    <head>\n'
+                '        <meta charset="utf-8">\n'
+                '    </head><body>\n')
 
             for item in target_items:
                 item_string = praw_tools.praw_object_to_string(item)
@@ -935,6 +974,8 @@ if __name__ == '__main__': # {{{1
     prawtoys = PRAWToys()
 
     if len(sys.argv) > 1 and sys.argv[1].lower() == 'debug':
+        # Crash on error messages so pdb can do a post-mortem.
+        print('Debug mode enabled.')
         prawtoys.cmdloop()
     else:
         while True:
