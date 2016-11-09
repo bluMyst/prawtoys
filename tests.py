@@ -85,6 +85,12 @@ class GenericPRAWToysTest(unittest.TestCase): # {{{2
         for i in self.prawtoys.items:
             self.assertTrue( f(i) )
 
+    def assertInOutput(self, s, clear_after=True):
+        self.assertTrue(s in self.output.getvalue())
+
+        if clear_after:
+            self.output.truncate(0)
+
 class Offline(GenericPRAWToysTest): # {{{2
     TEST_DATA = [
         'foo', 'bar', 'baz', 'foo', 'qux', '\xfcmlaut', '\u2603_snowman']
@@ -181,6 +187,10 @@ class Offline(GenericPRAWToysTest): # {{{2
         self.assertTrue(
             hasattr(self.prawtoys, 'test_worked')
             and self.prawtoys.test_worked)
+
+        self.output.truncate(0)
+        self.cmd('x self.test_worked')
+        self.assertInOutput('True\n')
 
     def test_submission_and_comment(self):
         test_data  = [CommentLookalike(i, i, i)    for i in self.TEST_DATA]
