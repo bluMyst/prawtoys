@@ -48,6 +48,8 @@ import OAuth2Util
 import ahto_lib
 import praw_tools
 
+VERSION = 'PRAWToys 2.1.2'
+
 class PRAWToys(cmd.Cmd): # {{{1
     prompt = '0> '
 
