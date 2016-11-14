@@ -47,8 +47,9 @@ import OAuth2Util
 
 import ahto_lib
 import praw_tools
+import helper
 
-VERSION = 'PRAWToys 2.1.2'
+VERSION = 'PRAWToys 2.2.2'
 
 class PRAWToys(cmd.Cmd): # {{{1
     prompt = '0> '
@@ -280,60 +281,8 @@ class PRAWToys(cmd.Cmd): # {{{1
         if arg: return cmd.Cmd.do_help(self, arg)
 
         prawtoys_instance = self # For use inside the classes below.
-        class CommandCategory(object):
-            def __init__(self, header, command_names):
-                ''' command_names example: ['ls', 'foo', 'bar'] '''
-                self.header = header
-                self.command_names = command_names
-
-                for i in command_names:
-                    if not hasattr(prawtoys_instance, 'do_' + i):
-                        raise ValueError('CommandCategory called with '
-                            'nonexistent command: ' + i)
-
-        class CommandCategories(object):
-            def __init__(self, *args):
-                '''You can call this as:
-
-                    CommandCategories([
-                        CommandCategory(header, [command_name, ...]),
-                        ...])
-
-                    But you can also call it as:
-
-                    CommandCategories([
-                        header, [
-                            command_name, ...]],
-
-                        ...)
-
-                    In which case it'll automatically create CommandCategory
-                    objects for you.
-                '''
-                if len(args) == 1:
-                    self.command_categories = args[0]
-                elif len(args) % 2 == 0:
-                    self.command_categories = []
-
-                    for i in range(0, len(args), 2):
-                        header, command_names = args[i], args[i+1]
-
-                        self.command_categories.append(
-                            CommandCategory(header, command_names))
-                else:
-                    raise ValueError("CommandCategories was called with an"
-                        " invalid number of arguments:" + str(len(args)))
-
-            def get_all_command_names(self):
-                command_names = []
-
-                for category in self.command_categories:
-                    command_names += category.command_names
-
-                return command_names
-
         # TODO: Yeah, I know. This is very... Lisp.
-        command_categories = CommandCategories(
+        command_categories = helper.Helper(self,
             'Commands for adding items:', [
                 'saved', 'user', 'user_comments', 'user_submissions', 'mine',
                 'my_comments', 'my_submissions', 'thread', 'get_from',
