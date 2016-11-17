@@ -95,11 +95,11 @@ def comment_str(comment:praw.objects.Comment,
 
     # Actually printing these characters would result in very messy output, so
     # replace them with something a little more readable.
-    comment_text.replace('\n', '\\n')
-    comment_text.replace('\t', '\\t')
-    comment_text.replace('\r', '\\r')
+    comment_text = comment_text.replace('\n', '\\n')
+    comment_text = comment_text.replace('\t', '\\t')
+    comment_text = comment_text.replace('\r', '\\r')
 
-    comment_text = ahto_lib.shorten_string(str(comment), max_comment_width)
+    comment_text = ahto_lib.shorten_string(comment_text, max_comment_width)
     return comment_text + subreddit_indicator
 
 def submission_str(submission:praw.objects.Submission,
