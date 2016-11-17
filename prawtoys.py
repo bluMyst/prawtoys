@@ -49,7 +49,7 @@ import ahto_lib
 import praw_tools
 import helper
 
-VERSION = 'PRAWToys 2.2.4'
+VERSION = 'PRAWToys 2.2.5'
 
 class PRAWToys(cmd.Cmd): # {{{1
     prompt = '0> '
