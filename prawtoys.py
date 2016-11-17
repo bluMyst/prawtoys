@@ -52,7 +52,7 @@ import ahto_lib
 # I.E., how many characters wide should we assume the user's terminal window is?
 ASSUMED_CONSOLE_WIDTH = 80
 
-VERSION = "PRAWToys 2.1.4"
+VERSION = "PRAWToys 2.1.5"
 
 def check_praw_version(min_version): # {{{2
     ''' Checks if the current praw version is at least min_version.
@@ -245,11 +245,10 @@ class PRAWToys(cmd.Cmd): # {{{1
         if file == None:
             file = self.stdout
 
-        def encoder(string):
-            if file.encoding is None:
-                return string
-            else:
-                return string.encode(file.encoding, errors='replace')
+        if self.stdout.encoding is None:
+            return self.print(*args, file=file, sep=sep, end=end)
+
+        encoder = lambda s: s.encode(file.encoding, errors='replace')
 
         sep  = encoder(sep)
         end  = encoder(end)
