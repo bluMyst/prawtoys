@@ -49,7 +49,7 @@ import ahto_lib
 import praw_tools
 import helper
 
-VERSION = 'PRAWToys 2.2.2'
+VERSION = 'PRAWToys 2.2.3'
 
 class PRAWToys(cmd.Cmd): # {{{1
     prompt = '0> '
@@ -103,7 +103,11 @@ class PRAWToys(cmd.Cmd): # {{{1
         if file == None:
             file = self.stdout
 
-        encoder = lambda s: s.encode(file.encoding, errors='replace')
+        def encoder(string):
+            if file.encoding is None:
+                return string
+            else:
+                return string.encode(file.encoding, errors='replace')
 
         sep  = encoder(sep)
         end  = encoder(end)
