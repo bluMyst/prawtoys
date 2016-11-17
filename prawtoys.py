@@ -52,7 +52,7 @@ import ahto_lib
 # I.E., how many characters wide should we assume the user's terminal window is?
 ASSUMED_CONSOLE_WIDTH = 80
 
-VERSION = "PRAWToys 2.1.5"
+VERSION = "PRAWToys 2.1.6"
 
 def check_praw_version(min_version): # {{{2
     ''' Checks if the current praw version is at least min_version.
@@ -148,7 +148,7 @@ def comment_str(comment:praw.objects.Comment, # {{{2
     comment_text = comment_text.replace('\t', '\\t')
     comment_text = comment_text.replace('\r', '\\r')
 
-    comment_text = ahto_lib.shorten_string(str(comment), max_comment_width)
+    comment_text = ahto_lib.shorten_string(comment_text, max_comment_width)
     return comment_text + subreddit_indicator
 
 def submission_str(submission:praw.objects.Submission, # {{{2
