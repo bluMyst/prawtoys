@@ -73,6 +73,7 @@ class GenericPRAWToysTest(unittest.TestCase): # {{{2
     def tearDown(self):
         ''' This gets run after every test_* function. '''
         self.output.truncate(0)
+        self.prawtoys.items = []
 
     def cmd(self, *args, **kwargs):
         ''' Shortcut for self.prawtoys.onecmd '''
