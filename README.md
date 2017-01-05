@@ -36,24 +36,21 @@ The possibilities are endless!
 
 ## Installing/running
 
-First of all, install Python 3 and make sure it's in your PATH. Then run:
+Requires Python 3. Try running `python --version` to make sure you're using the right version. On some Linux systems, Python 3 is installed as `python3`, where `python` is Python 2 instead. If that's the case (you can check with `python3 --version`), use `python3` in the below commands.
 
-    python -m pip install praw<4.0.0 praw-oauth2util<1.0.0
+Because of compatibility issues with PRAW 4, PRAWToys needs to be run in a virtual environment. Here's how you set one up:
 
-Then, run prawtoys with:
+    python -m pip install virtualenv
+    virtualenv virtualenv
+    virtualenv/Scripts/pip install -r requirements.txt
 
-    python prawtoys.py
+To run PRAWToys:
 
-If that doesn't work, it could mean that you have a pre-existing copy of `praw` or `praw-oauth2util`. You can fix that with:
+    virtualenv/Scripts/python.exe prawtoys.py
 
-    python -m pip uninstall praw praw-oauth2util
-    python -m pip install praw<4.0.0 praw-oauth2util<1.0.0
+To run unittests on PRAWToys:
 
-However, it might break other programs that expect later versions of `praw`.
-
-You can also test prawtoys to make sure it's running properly:
-
-    python -m unittest -v tests
+    virtualenv/Scripts/python.exe -m unittest -v tests
 
 ## Notes
 
