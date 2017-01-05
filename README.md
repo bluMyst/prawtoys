@@ -38,11 +38,18 @@ The possibilities are endless!
 
 First of all, install Python 3 and make sure it's in your PATH. Then run:
 
-    python -m pip install --upgrade praw praw-oauth2util
+    python -m pip install praw<4.0.0 praw-oauth2util<1.0.0
 
 Then, run prawtoys with:
 
     python prawtoys.py
+
+If that doesn't work, it could mean that you have a pre-existing copy of `praw` or `praw-oauth2util`. You can fix that with:
+
+    python -m pip uninstall praw praw-oauth2util
+    python -m pip install praw<4.0.0 praw-oauth2util<1.0.0
+
+However, it might break other programs that expect later versions of `praw`.
 
 You can also test prawtoys to make sure it's running properly:
 
