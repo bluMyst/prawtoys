@@ -44,13 +44,21 @@ Because of compatibility issues with PRAW 4, PRAWToys needs to be run in a virtu
     virtualenv virtualenv
     virtualenv/Scripts/pip install -r requirements.txt
 
-To run PRAWToys:
+From here, just run `virtualenv/Scripts/activate.ps1`. or one of the other `activate` scripts in that directory. It depends on your OS and shell:
 
-    virtualenv/Scripts/python.exe prawtoys.py
+Windows and Command Prompt: `activate.bat`  
+Windows and Powershell: `activate.ps1`  
+Linux and Bash: `activate`
 
-To run unittests on PRAWToys:
+Boom! Now you're in the virtual environment. From here, you can run PRAWToys with:
 
-    virtualenv/Scripts/python.exe -m unittest -v tests
+    python prawtoys.py
+
+Or run unittests on PRAWToys with:
+
+    python -m unittest -v tests
+
+You can exit the virtual environment at any time by running `deactivate`.
 
 ## Notes
 
