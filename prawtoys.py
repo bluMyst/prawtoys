@@ -210,7 +210,8 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.use_rawinput = not can_use_readline
 
         self.items = []
-        self.reddit_session = praw.Reddit(self.VERSION)
+        self.reddit_session = praw.Reddit(self.VERSION,
+                                          disable_update_check=True)
 
         super(PRAWToys, self).__init__(self, *args, **kwargs)
 
