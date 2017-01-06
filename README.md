@@ -44,11 +44,11 @@ You may need to change `python3` to `python` to get it to work. If neither work,
 
 From there, just run:
 
-    python setup.py
+    python3 setup.py
 
 Once that's done, you can run PRAWToys like this:
 
-    python run_prawtoys.py
+    python3 run_prawtoys.py
 
 ## Notes
 
