@@ -36,29 +36,17 @@ The possibilities are endless!
 
 ## Installing/running
 
-Requires Python 3. Try running `python --version` to make sure you're using the right version. On some Linux systems, Python 3 is installed as `python3`, where `python` is Python 2 instead. If that's the case (you can check with `python3 --version`), use `python3` in the below commands.
+Requires Python 3. To install, first make sure you have virtualenv installed. Run the following as an administrator / root:
 
-Because of compatibility issues with PRAW 4, PRAWToys needs to be run in a virtual environment. Here's how you set one up:
+    python3 -m pip install virtualenv
 
-    python -m pip install virtualenv
-    virtualenv virtualenv
-    virtualenv/Scripts/pip install -r requirements.txt
+You may need to change `python3` to `python` to get it to work. If neither work, try (re-)installing Python 3.
 
-From here, just run `virtualenv/Scripts/activate.ps1`. or one of the other `activate` scripts in that directory. It depends on your OS and shell:
+From there, just run:
 
-Windows and Command Prompt: `activate.bat`  
-Windows and Powershell: `activate.ps1`  
-Linux and Bash: `activate`
+    python setup.py
 
-Boom! Now you're in the virtual environment. From here, you can run PRAWToys with:
-
-    python prawtoys.py
-
-Or run unittests on PRAWToys with:
-
-    python -m unittest -v tests
-
-You can exit the virtual environment at any time by running `deactivate`.
+Once that's done, you can run PRAWToys by using either `prawtoys.bat` or `prawtoys.sh` depending on your operating system.
 
 ## Notes
 
