@@ -57,7 +57,14 @@ else:
 
 print()
 print("Creating virtual environment...")
-must_return_0(python_command + " -m virtualenv virtualenv")
+
+returncode = subprocess.call(python_command + " -m virtualenv virtualenv")
+if returncode != 0:
+    print()
+    print("Virtual environment creation failed!")
+    print("Is virtualenv installed? Try running the following as an admin/root:")
+    print(python_command, "-m pip install virtualenv")
+    exit(1)
 
 if not venv_python.exists():
     print("Unable to find the python executable in:", str(venv_python))
@@ -67,38 +74,7 @@ print()
 print("Installing modules...")
 must_return_0(str(venv_python) + " -m pip install -r requirements.txt")
 
-# We need a script to run prawtoys because we need to run it through our
-# virtual environment, and asking the user to do that manually is too much
-# hassle.
-#
-# Either write:
-# virtualenv\Scripts\python.exe prawtoys.py %*
-#
-# for Windows, or:
-# virtualenv/Scripts/python prawtoys.py "$@"
-# For *nix.
-#
-# Those little things on the end make sure that all arguments are
-# passed correctly.
-print("Generating prawtoys script...")
-
-if is_windows:
-    with (root / "prawtoys.bat").open('w') as script:
-        script.write("@echo off\n\n")
-
-        script.write("{python} {prawtoys} %*\n".format(
-            python=str(venv_python),
-            prawtoys=str(root / "prawtoys.py")))
-else:
-    with (root / "prawtoys.sh").open('w') as script:
-        script.write("#!/bin/bash\n\n")
-
-        script.write("{python} {prawtoys} \"$@\"\n".format(
-            python=str(venv_python),
-            prawtoys=str(root / "prawtoys.py")))
-
 print()
 print("That's it! You should be good to go!")
-print("To start PRAWToys, just run:",
-      "prawtoys.bat" if is_windows else "prawtoys.sh")
+print("To start PRAWToys, just run: python run_prawtoys.py")
 print("Running 'python prawtoys.py' WILL NOT WORK!")

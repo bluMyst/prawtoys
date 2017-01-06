@@ -46,7 +46,9 @@ From there, just run:
 
     python setup.py
 
-Once that's done, you can run PRAWToys by using either `prawtoys.bat` or `prawtoys.sh` depending on your operating system.
+Once that's done, you can run PRAWToys like this:
+
+    python run_prawtoys.py
 
 ## Notes
 
