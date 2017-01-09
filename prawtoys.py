@@ -8,7 +8,7 @@
 # * Example slightly obscured so that ctrl-f (or your text editor's equivalent)
 #   won't get confused and find a false positive.
 #
-# TODO: Nodupes command, praw.objects.Submission has .__eq__() so == should
+# TODO: Nodupes command. praw.objects.Submission has .__eq__() so == should
 #       work. Seems to work after a bit of testing. Also, wasn't there a
 #       command in URLToys that filtered out BOTH of the dupes? Might come in
 #       handy too.
@@ -41,6 +41,9 @@ import webbrowser
 from pprint import pprint
 import collections
 import pickle
+import sys
+import time
+import threading
 
 import praw
 import OAuth2Util
@@ -49,18 +52,79 @@ import ahto_lib
 import praw_tools
 import helper
 
-VERSION = 'PRAWToys 2.2.5'
+VERSION = 'PRAWToys 2.3.0'
 
-class PRAWToys(cmd.Cmd): # {{{1
+# Functions {{{1
+def loading_screen(task, *task_args, stdout=sys.stdout, **task_kwargs): # {{{2
+    def loading_animation(task_finished, stdout=sys.stdout):
+        # If it takes longer than one second to finish the task, display the
+        # loading animation.
+        if task_finished.wait(timeout=1):
+            return
+
+        while True:
+            for i in ["---", " \\ ", " | ", " / "]:
+                print("\rLoading...", i, end='', file=stdout)
+                sys.stdout.flush()
+
+                if task_finished.wait(timeout=0.2):
+                    print("\rLoading... done!", file=stdout)
+                    return
+
+    """ print a loading animation while doing something else """
+    task_finished = threading.Event()
+    animation = threading.Thread(target=loading_animation,
+                                 args=(task_finished, stdout))
+
+    animation.start()
+    task_data = task(*task_args, **task_kwargs)
+    task_finished.set()
+    animation.join() # to prevent race conditions with printing
+
+    return task_data
+
+def loading_wrapper(f): # {{{2
+    """ wrap a URLToysClone function in a loading_screen to self.stdout """
+    def new_f(self, *args, **kwargs):
+        return loading_screen(f, self, *args, stdout=self.stdout, **kwargs)
+
+    return new_f
+
+
+def logged_in_command(f): # {{{2
+    """ A decorator for PRAWToys commands that need the user to be logged in.
+
+    Checks if the user is logged in. If so, runs the function. If not,
+    prints an error and returns.
+
+    Since decorators are run on methods before there's any 'self' to speak
+    of, this decorator doesn't take 'self' as an argument. If it did, it
+    wouldn't work.
+    """
+
+    def new_f(self, *args, **kwargs):
+        if (not hasattr(self.reddit_session, 'user')
+                or not self.reddit_session.user):
+            self.print('You need to be logged in first. Try typing "help login".')
+            return
+
+        f(self, *args, **kwargs)
+
+    # This was a bitch to debug. The help command reads help from each do_*
+    # command's docstrings.
+    new_f.__doc__ = f.__doc__
+
+    return new_f
+
+
+class URLToysClone(cmd.Cmd): # {{{1
     prompt = '0> '
+    VERSION = "URLToysClone generic class"
 
     def __init__(self, *args, **kwargs): # {{{2
         """ See cmd.Cmd.__init__ for valid arguments """
         # This is arguably more readable than having an if/else, but I'll
         # understand if you don't like the way it looks.
-        global VERSION
-        self.VERSION = VERSION
-
         can_use_readline = (isinstance(sys.stdout.write, collections.Callable)
             and isinstance(sys.stdin.readline, collections.Callable))
 
@@ -68,10 +132,8 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.use_rawinput = not can_use_readline
 
         self.items = []
-        self.reddit_session = praw.Reddit(self.VERSION,
-                                          disable_update_check=True)
 
-        super(PRAWToys, self).__init__(self, *args, **kwargs)
+        super(URLToysClone, self).__init__(self, *args, **kwargs)
 
         self.print(self.VERSION)
         self.print()
@@ -143,12 +205,12 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.update_prompt()
 
     def do_EOF(self, arg): # {{{2
-        # If the user types an EOF character, exit PRAWToys.
+        # If the user types an EOF character, exit.
         exit(0)
     do_exit = do_EOF
 
     def update_prompt(self): # {{{2
-        """ Change the prompt to show how many matches there are. """
+        """ Change the prompt to show how many items there are. """
         items_len = str(len(self.items))
         self.prompt = items_len + '> '
 
@@ -157,6 +219,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.items += list(l)
 
     def filter_items(self, f, invert=False): # {{{2
+        """ filter self.items by f and update undo history """
         if invert:
             new_items = itertools.filterfalse(f, self.items)
         else:
@@ -164,6 +227,157 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         self.old_items = self.items
         self.items = list(new_items)
+
+    def item_to_str(self, item, chars_printed=0): # {{{2
+        """ Don't call this directly! Instead, use print_item.
+
+        This is for you to overwrite to tell URLToysClone how to print your
+        items.
+
+        chars_printed is how many characters have been printed to the current
+        line so far. For example:
+
+        1337: 
+
+        6 characters have been printed here (notice the leading space). This is
+        helpful if you want to only print up to 80 characters per line, for
+        example.
+        """
+        return str(item)
+
+    def print_item(self, index, item=None, index_rjust=None): # {{{2
+        ''' index_rjust is how far to rjust the index number. If it's None,
+        we'll just rjust it based on the highest index in self.items
+
+        If that doesn't make any sense, just keep it as None and you should be
+        fine.
+        '''
+
+        if item == None:
+            item = self.items[index]
+
+        if index_rjust == None:
+            index_rjust = len(str(len(self.items)))
+
+        index_str = str(index).rjust(index_rjust)
+
+        # index_rjust + 2 because we also have ': ', which is 2 characters.
+        item_str = self.item_to_str(item, index_rjust + 2)
+
+        self.safe_print('{index_str}: {item_str}'.format(**locals()))
+
+    def do_undo(self, arg): # {{{2
+        '''undo
+
+        Resets the item list one change back in time.
+        '''
+        # Unit-tested.
+        if hasattr(self, 'old_items'):
+            self.items = self.old_items[:]
+        else:
+            self.print('No undo history found. Nothing to undo.')
+    do_u = do_undo
+
+    def do_reset(self, arg): # {{{2
+        '''reset
+
+        Clear all items from the item list.
+        '''
+        # Unit-tested.
+        self.items = []
+
+    def do_x(self, arg): # {{{2
+        ''' x <command>
+
+        Execute <command> as python code and pretty-print the result (if any).
+        '''
+        try:
+            pprint(eval(arg), stream=self.stdout)
+        except SyntaxError:
+            # If 'arg' doesn't return a value, eval(arg) will raise a
+            # SyntaxError. So instead, just exec() it and don't print the
+            # (nonexistant) result.
+            exec(arg)
+        except:
+            traceback.print_exception(*sys.exc_info())
+
+    def do_rm(self, arg): # {{{2
+        '''rm <index>...: remove items by index'''
+        indicies = list(map(int, arg.split()))
+
+        items_len = len(self.items)
+        for i in indicies:
+            if i < 0 or i > items_len-1:
+                self.print("Out of range:", i)
+                return
+
+        self.old_items = self.items[:]
+
+        for i in indicies:
+            self.items[i] = None
+
+        self.items = [i for i in self.items if i != None]
+
+    def do_ls(self, arg): # {{{2
+        '''
+        ls [start [n=10]]: list items, with [start] list [n] items starting at
+        [start]
+        '''
+        if len(self.items) == 0:
+            return
+
+        args = arg.split()
+
+        to_print = list( enumerate(self.items) )
+
+        if len(args) > 0:
+            start = int(args[0])
+            to_print = to_print[start:]
+
+            if len(args) > 1:
+                n = int(args[1])
+                to_print = to_print[:n]
+
+        index_rjust = len(str(
+            max(index for index, item in to_print)))
+        for index, item in to_print:
+            self.print_item(index, item, index_rjust)
+
+    def do_head(self, arg): # {{{2
+        '''head [n=10]: show first [n] items'''
+        args = arg.split()
+        if len(args) > 0:
+            n = int(args[0])
+        else:
+            n = 10
+
+        self.do_ls('0 ' + str(n))
+
+        #to_print = list(enumerate(self.items))[:n]
+        #for i, v in enumerate(self.items[:n]):
+        #    self.print_item(i, v)
+
+    def do_tail(self, arg): # {{{2
+        '''tail [n=10]: show last [n] items'''
+        args = arg.split()
+        if len(args) > 0:
+            n = int(args[0])
+        else:
+            n = 10
+
+        start = len(self.items) - n
+        self.do_ls( str(start) + ' ' + str(n) )
+
+class PRAWToys(URLToysClone): # {{{1
+    def __init__(self, *args, **kwargs): # {{{2
+        """ See URLToysClone.__init__ for valid arguments """
+        global VERSION
+        self.VERSION = VERSION
+
+        self.reddit_session = praw.Reddit(self.VERSION,
+                                          disable_update_check=True)
+
+        super(PRAWToys, self).__init__(*args, **kwargs)
 
     def get_items_from_subs(self, *subs): # {{{2
         '''given a list of subs, return all stored items from those subs'''
@@ -185,89 +399,8 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         return self.items
 
-    def print_item(self, index, item=None, index_rjust=None): # {{{2
-        ''' index_rjust is how far to rjust the index number. If it's None,
-        we'll just rjust it based on the highest index in self.items
-
-        If that doesn't make any sense, just keep it as None and you should be
-        fine.
-        '''
-
-        if item == None:
-            item = self.items[index]
-
-        if index_rjust == None:
-            index_rjust = len(str(len(self.items)))
-
-        index_str = str(index).rjust(index_rjust)
-
-        # TODO: This code might crash on some systems because it might print
-        #       unicode characters to the console. Try using str.encode and/or
-        #       str.decode.
-        item_str = praw_tools.praw_object_to_string(item, index_rjust+2)
-        self.safe_print('{index_str}: {item_str}'.format(**locals()))
-
-    def logged_in_command(f): # {{{2
-        """ A decorator for commands that need the user to be logged in.
-
-        Checks if the user is logged in. If so, runs the function. If not,
-        prints an error and returns.
-
-        Since decorators are run on methods before there's any 'self' to speak
-        of, this decorator doesn't take 'self' as an argument. If it did, it
-        wouldn't work.
-        """
-
-        def new_f(self, *args, **kwargs):
-            if (not hasattr(self.reddit_session, 'user')
-                    or not self.reddit_session.user):
-                self.print('You need to be logged in first. Try typing "help login".')
-                return
-
-            f(self, *args, **kwargs)
-
-        # This was a bitch to debug. The help command reads help from each do_*
-        # command's docstrings.
-        new_f.__doc__ = f.__doc__
-
-        return new_f
-
-    # Undo and reset. {{{2
-    def do_undo(self, arg): # {{{3
-        '''undo
-
-        Resets the item list one change back in time.
-        '''
-        # Unit-tested.
-        if hasattr(self, 'old_items'):
-            self.items = self.old_items[:]
-        else:
-            self.print('No undo history found. Nothing to undo.')
-    do_u = do_undo
-
-    def do_reset(self, arg): # {{{3
-        '''reset
-
-        Clear all items from the item list.
-        '''
-        # Unit-tested.
-        self.items = []
-
-    # Debug commands. {{{2
-    def do_x(self, arg): # {{{3
-        ''' x <command>
-
-        Execute <command> as python code and pretty-print the result (if any).
-        '''
-        try:
-            pprint(eval(arg), stream=self.stdout)
-        except SyntaxError:
-            # If 'arg' doesn't return a value, eval(arg) will raise a
-            # SyntaxError. So instead, just exec() it and don't print the
-            # (nonexistant) result.
-            exec(arg)
-        except:
-            traceback.print_exception(*sys.exc_info())
+    def item_to_str(self, item, chars_printed=0): # {{{2
+        return praw_tools.praw_object_to_string(item, chars_printed)
 
     def do_help(self, arg): # {{{2
         'List available commands with "help" or detailed help with "help cmd".'
@@ -278,6 +411,8 @@ class PRAWToys(cmd.Cmd): # {{{1
         # intimidating to look at the list of commands without them.
 
         # TODO: This method's code is really ugly. I'm sorry in advance.
+        # TODO: Move this over to URLToysClone and have some interface to make
+        # your own command_categories by calling a method or something.
 
         # If they want help on a specific command, just pass them off to
         # the original method. No reason to reinvent the wheel in this
@@ -386,6 +521,7 @@ class PRAWToys(cmd.Cmd): # {{{1
 
     # Commands to add items. {{{2
     @logged_in_command # do_saved {{{3
+    @loading_wrapper
     def do_saved(self, arg):
         '''saved
 
@@ -394,7 +530,8 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.add_items(
             self.reddit_session.user.get_saved(limit=None))
 
-    def do_user(self, arg): # {{{3
+    @loading_wrapper # do_user {{{3
+    def do_user(self, arg):
         '''user <username> [limit=None]
 
         Get up to [limit] of a user's comments and submissions. If 'limit' is
@@ -413,7 +550,8 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         self.add_items(list(user.get_overview(limit=limit)))
 
-    def do_user_comments(self, arg): # {{{3
+    @loading_wrapper # do_user_comments {{{3
+    def do_user_comments(self, arg):
         '''user_comments <username> [limit=None]
 
         Get up to [limit] of a user's comments. If 'limit' is left blank, get ALL
@@ -432,7 +570,8 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         self.add_items(list( user.get_comments(limit=limit) ))
 
-    def do_user_submissions(self, arg): # {{{3
+    @loading_wrapper # do_user_submissions {{{3
+    def do_user_submissions(self, arg):
         '''user_submissions <username> [limit=None]
 
         Get up to [limit] of a user's submissions. If 'limit' is left blank,
@@ -452,6 +591,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.add_items(list( user.get_submitted(limit=limit) ))
 
     @logged_in_command # do_mine {{{3
+    @loading_wrapper
     def do_mine(self, arg):
         '''mine
 
@@ -461,6 +601,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.do_user(self.reddit_session.user.name)
 
     @logged_in_command # do_my_submissions {{{3
+    @loading_wrapper
     def do_my_submissions(self, arg):
         '''my_submissions: get your submissions'''
         # TODO: Add limit and copy over do_user_submissions docstring.
@@ -471,6 +612,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         self.do_user_submissions(self.reddit_session.user.name)
 
     @logged_in_command # do_my_comments {{{3
+    @loading_wrapper
     def do_my_comments(self, arg):
         '''my_coments: get your comments'''
         # TODO: Add limit and copy over do_user_submissions docstring.
@@ -480,7 +622,8 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         self.do_user_comments(self.reddit_session.user.name)
 
-    def do_thread(self, arg): # {{{3
+    @loading_wrapper # do_thread {{{3
+    def do_thread(self, arg):
         '''thread <submission id> [n=10,000]: get <n> comments from thread. BUGGY'''
         #raise NotImplementedError
 
@@ -518,7 +661,8 @@ class PRAWToys(cmd.Cmd): # {{{1
             if type(i) != praw.objects.MoreComments
         )
 
-    def do_get_from(self, arg): # {{{3
+    @loading_wrapper # do_get_from {{{3
+    def do_get_from(self, arg):
         ''' get_from <subreddit> [n=1000] [sort=hot]
 
         Get [n] submissions from /r/<subreddit>, sorting by [sort]. [sort] can
@@ -551,7 +695,8 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         self.add_items(sub.search('', limit=limit, sort=sort))
 
-    def do_load_from_file(self, arg): # {{{3
+    @loading_wrapper # do_load_from_file {{{3
+    def do_load_from_file(self, arg):
         '''load_from_file <filename>
 
         Load the items stored in <filename>.pickle. This is generally to get
@@ -691,74 +836,7 @@ class PRAWToys(cmd.Cmd): # {{{1
         '''
         self.title_ntitle(invert=True, arg=arg)
 
-    def do_rm(self, arg): # {{{3
-        '''rm <index>...: remove items by index'''
-        indicies = list(map(int, arg.split()))
-
-        items_len = len(self.items)
-        for i in indicies:
-            if i < 0 or i > items_len-1:
-                self.print("Out of range:", i)
-                return
-
-        self.old_items = self.items[:]
-
-        for i in indicies:
-            self.items[i] = None
-
-        self.items = [i for i in self.items if i != None]
-
     # Commands for viewing list items. {{{2
-    def do_ls(self, arg): # {{{3
-        '''
-        ls [start [n=10]]: list items, with [start] list [n] items starting at
-        [start]
-        '''
-        if len(self.items) == 0:
-            return
-
-        args = arg.split()
-
-        to_print = list( enumerate(self.items) )
-
-        if len(args) > 0:
-            start = int(args[0])
-            to_print = to_print[start:]
-
-            if len(args) > 1:
-                n = int(args[1])
-                to_print = to_print[:n]
-
-        index_rjust = len(str(
-            max(index for index, item in to_print)))
-        for index, item in to_print:
-            self.print_item(index, item, index_rjust)
-
-    def do_head(self, arg): # {{{3
-        '''head [n=10]: show first [n] items'''
-        args = arg.split()
-        if len(args) > 0:
-            n = int(args[0])
-        else:
-            n = 10
-
-        self.do_ls('0 ' + str(n))
-
-        #to_print = list(enumerate(self.items))[:n]
-        #for i, v in enumerate(self.items[:n]):
-        #    self.print_item(i, v)
-
-    def do_tail(self, arg): # {{{3
-        '''tail [n=10]: show last [n] items'''
-        args = arg.split()
-        if len(args) > 0:
-            n = int(args[0])
-        else:
-            n = 10
-
-        start = len(self.items) - n
-        self.do_ls( str(start) + ' ' + str(n) )
-
     def do_view_subs(self, arg): # {{{3
         '''view_subs: shows how many of the list items are from which sub'''
         frequency_by_sub = {}
@@ -853,14 +931,16 @@ class PRAWToys(cmd.Cmd): # {{{1
 
         ahto_lib.progress_map(self.open, indicies_andor_items)
 
-    def do_open(self, arg): # {{{3
+    @loading_wrapper # do_open {{{3
+    def do_open(self, arg):
         '''
         open [sub]...: open all items using the webbrowser module. optionally
         filter by sub(s)
         '''
         self.open_all(self.arg_to_matching_subs(arg))
 
-    def do_open_index(self, arg): # {{{3
+    @loading_wrapper # do_open_index {{{3
+    def do_open_index(self, arg):
         '''open_index <index>...
 
         Open the item(s) at the given index/indicies.
