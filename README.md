@@ -36,24 +36,19 @@ The possibilities are endless!
 
 ## Installing/running
 
-First of all, install Python 3 and make sure it's in your PATH. Then run:
+Requires Python 3. To install, first make sure you have virtualenv installed. Run the following as an administrator / root:
 
-    python -m pip install praw<4.0.0 praw-oauth2util<1.0.0
+    python3 -m pip install virtualenv
 
-Then, run prawtoys with:
+You may need to change `python3` to `python` to get it to work. If neither work, try (re-)installing Python 3.
 
-    python prawtoys.py
+From there, just run:
 
-If that doesn't work, it could mean that you have a pre-existing copy of `praw` or `praw-oauth2util`. You can fix that with:
+    python3 setup.py
 
-    python -m pip uninstall praw praw-oauth2util
-    python -m pip install praw<4.0.0 praw-oauth2util<1.0.0
+Once that's done, you can run PRAWToys like this:
 
-However, it might break other programs that expect later versions of `praw`.
-
-You can also test prawtoys to make sure it's running properly:
-
-    python -m unittest -v tests
+    python3 run_prawtoys.py
 
 ## Notes
 
