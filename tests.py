@@ -1,6 +1,7 @@
 # vim: foldmethod=marker
 # Imports. {{{1
 import unittest
+import unittest.mock
 import praw
 import io
 
