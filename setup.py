@@ -3,6 +3,17 @@ import os
 import pathlib
 import subprocess
 
+
+def must_return_0(cmd, *args, **kwargs):
+    """ run subprocess.call and exit the program if the returncode != 0 """
+    returncode = subprocess.call(cmd, *args, **kwargs)
+
+    if returncode != 0:
+        print("Uh oh! Failed to run the command:", cmd)
+        print("Got nonzero return code:", returncode)
+        exit(1)
+
+
 if os.name not in ['nt', 'posix']:
     print("Unrecognized OS type:", os.name)
     exit(1)
@@ -19,20 +30,11 @@ venv_python = venv_scripts / ("python.exe" if is_windows else "python")
 # os.devnull is 'nul' on Windows and '/dev/null' on *nix.
 devnull = open(os.devnull, 'w')
 
-def must_return_0(cmd, *args, **kwargs):
-    """ run subprocess.call and exit the program if the returncode != 0 """
-    returncode = subprocess.call(cmd, *args, **kwargs)
-
-    if returncode != 0:
-        print("Uh oh! Failed to run the command:", cmd)
-        print("Got nonzero return code:", returncode)
-        exit(1)
-
 if (root / 'virtualenv').exists():
-    #      |--------------------------------80 characters---------------------------------|
-    print("It looks like there's already a folder called virtualenv. If you're having")
-    print("trouble with the virtualenv and want to re-generate it, delete that folder and")
-    print("run this script again.")
+    print(
+        "It looks like there's already a folder called virtualenv. If you're",
+        "having trouble with the virtualenv and want to re-generate it,",
+        "delete that folder and run this script again.")
     exit(1)
 
 # Try to figure out what the Python command is called on this system.
@@ -40,17 +42,21 @@ print("Searching for Python command name...")
 
 for python_command in ['python3', 'python']:
     try:
-        returncode = subprocess.call(python_command + ' --version',
-                                     stdout=devnull)
+        returncode = subprocess.call(
+            [python_command, '--version'],
+            stdout=devnull)
     except FileNotFoundError:
         continue
 
     if returncode != 0:
-        print("Found Python under the name 'python3', but it gave is an error.")
+        print(
+            "Found Python under the name 'python3', but it gave is an error.")
         exit(1)
     else:
         print("Found it! It's '" + python_command + "'")
-        break # python_command is now set to the right value
+
+        # Python_command is now set to the right value.
+        break
 else:
     print("Couldn't figure out where Python was!")
     exit(1)
@@ -58,11 +64,13 @@ else:
 print()
 print("Creating virtual environment...")
 
-returncode = subprocess.call(python_command + " -m virtualenv virtualenv")
+returncode = subprocess.call(
+    [python_command, "-m", "virtualenv", "virtualenv"])
 if returncode != 0:
     print()
     print("Virtual environment creation failed!")
-    print("Is virtualenv installed? Try running the following as an admin/root:")
+    print("Is virtualenv installed? Try running the following as an",
+          "admin/root:")
     print(python_command, "-m pip install virtualenv")
     exit(1)
 
