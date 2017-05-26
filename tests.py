@@ -1,19 +1,21 @@
-# vim: foldmethod=marker
 # Imports. {{{1
 import unittest
 import unittest.mock
-import praw
 import io
 
 import prawtoys
 import praw_tools
 
+# TODO: Switch over to pytest.
+
+
 # Lookalike classes. {{{1
-class SubredditLookalike(object): # {{{2
+class SubredditLookalike(object):  # {{{2
     def __init__(self, display_name):
         self.display_name = display_name
 
-class PostLookalike(object): # {{{2
+
+class PostLookalike(object):  # {{{2
     '''A generic for CommentLookalike and SubmissionLookalike'''
     def __init__(self, subreddit):
         if isinstance(subreddit, SubredditLookalike):
@@ -21,10 +23,11 @@ class PostLookalike(object): # {{{2
         else:
             self.subreddit = SubredditLookalike(subreddit)
 
-class CommentLookalike(PostLookalike): # {{{2
+
+class CommentLookalike(PostLookalike):  # {{{2
     '''Designed to generate test data for PRAWToys to munch on.'''
     def __init__(self, text='foo', subreddit='foo', url='http://foo/',
-            submission=None):
+                 submission=None):
         self.text       = text
         self.submission = submission or SubmissionLookalike()
         self.permalink  = url
@@ -33,13 +36,15 @@ class CommentLookalike(PostLookalike): # {{{2
     def __str__(self):
         return self.text
 
-class SubmissionLookalike(PostLookalike): # {{{2
+
+class SubmissionLookalike(PostLookalike):  # {{{2
     '''Designed to generate test data for PRAWToys to munch on.'''
     def __init__(self, title='foo', subreddit='foo', url='http://foo/',
-            is_self=False, comments=[], over_18=False):
+                 is_self=False, comments=[], over_18=False):
         self.title      = title
         self.short_link = url
-        #self.permalink  = url # TODO: Do submissions have a permalink parameter?
+        # TODO: Do submissions have a permalink parameter?
+        # self.permalink  = url
         self.is_self    = is_self
         self.comments   = comments
         self.over_18    = over_18
@@ -58,8 +63,9 @@ def is_submission(submission):
         is_submission_backup(submission))
 praw_tools.is_submission = is_submission
 
+
 # The actual tests. {{{1
-class GenericPRAWToysTest(unittest.TestCase): # {{{2
+class GenericPRAWToysTest(unittest.TestCase):  # {{{2
     def __init__(self, *args, **kwargs):
         """ Same arguments as unittest.TestCase """
         self.output   = io.StringIO()
@@ -85,7 +91,7 @@ class GenericPRAWToysTest(unittest.TestCase): # {{{2
 
     def assertAllItems(self, f):
         for i in self.prawtoys.items:
-            self.assertTrue( f(i) )
+            self.assertTrue(f(i))
 
     def assertInOutput(self, s, clear_after=True):
         self.assertTrue(s in self.output.getvalue())
@@ -93,7 +99,8 @@ class GenericPRAWToysTest(unittest.TestCase): # {{{2
         if clear_after:
             self.output.truncate(0)
 
-class Offline(GenericPRAWToysTest): # {{{2
+
+class Offline(GenericPRAWToysTest):  # {{{2
     TEST_DATA = [
         'foo', 'bar', 'baz', 'foo', 'qux', '\xfcmlaut', '\u2603_snowman']
 
@@ -124,8 +131,9 @@ class Offline(GenericPRAWToysTest): # {{{2
         dt = self.data_tester([
             SubmissionLookalike(subreddit=i) for i in self.TEST_DATA])
 
-        # There's no reason to do display_name.lower() here, since the TEST_DATA
-        # is already all lowercase, but it's important to keep up the habit.
+        # There's no reason to do display_name.lower() here, since the
+        # TEST_DATA is already all lowercase, but it's important to keep up
+        # the habit.
         dt('sub foo bar', lambda i:
             i.subreddit.display_name.lower() in ['foo', 'bar'])
 
@@ -178,10 +186,12 @@ class Offline(GenericPRAWToysTest): # {{{2
             self.cmd('undo')
             self.assertTrue(self.prawtoys.items == data)
 
-        test_undo_on('title foo',
+        test_undo_on(
+            'title foo',
             [SubmissionLookalike(title=i) for i in self.TEST_DATA])
 
-        test_undo_on('sfw',
+        test_undo_on(
+            'sfw',
             [SubmissionLookalike(over_18=i) for i in self.BOOL_TEST_DATA])
 
     def test_x(self):
@@ -213,13 +223,14 @@ class Offline(GenericPRAWToysTest): # {{{2
         self.data_tester(test_data)('submission', praw_tools.is_submission)
         self.data_tester(test_data)('comment',    praw_tools.is_comment)
 
-class Online(GenericPRAWToysTest): # {{{2
+
+class Online(GenericPRAWToysTest):  # {{{2
     def test_user(self):
         self.cmd('user winter_mutant 10')
         self.assertTrue(len(self.prawtoys.items) == 10)
 
-        self.assertAllItems(lambda i:
-            i.author.name == 'winter_mutant')
+        self.assertAllItems(
+            lambda i: i.author.name == 'winter_mutant')
 
         self.cmd('ls')
 
@@ -227,9 +238,10 @@ class Online(GenericPRAWToysTest): # {{{2
         self.cmd('user_comments winter_mutant 10')
         self.assertTrue(len(self.prawtoys.items) == 10)
 
-        self.assertAllItems(lambda i:
-            praw_tools.is_comment(i)
-            and i.author.name == 'winter_mutant')
+        self.assertAllItems(
+            lambda i:
+                praw_tools.is_comment(i)
+                and i.author.name == 'winter_mutant')
 
         self.cmd('ls')
 
@@ -237,9 +249,10 @@ class Online(GenericPRAWToysTest): # {{{2
         self.cmd('user_submissions winter_mutant 10')
         self.assertTrue(len(self.prawtoys.items) == 10)
 
-        self.assertAllItems(lambda i:
-            praw_tools.is_submission(i)
-            and i.author.name == 'winter_mutant')
+        self.assertAllItems(
+            lambda i:
+                praw_tools.is_submission(i)
+                and i.author.name == 'winter_mutant')
 
         self.cmd('ls')
 
@@ -251,11 +264,17 @@ class Online(GenericPRAWToysTest): # {{{2
             self.cmd('ls')
             self.reset()
 
-        creatively_named_function('get_from askreddit 10 top', 10, lambda i:
-            i.subreddit.display_name.lower() == 'askreddit')
+        creatively_named_function(
+            'get_from askreddit 10 top',
+            10,
+            lambda i: i.subreddit.display_name.lower() == 'askreddit')
 
-        creatively_named_function('get_from aww 9 new', 9, lambda i:
-            i.subreddit.display_name.lower() == 'aww')
+        creatively_named_function(
+            'get_from aww 9 new',
+            9,
+            lambda i: i.subreddit.display_name.lower() == 'aww')
 
-        creatively_named_function('get_from awwnime 8 rising', 8, lambda i:
-            i.subreddit.display_name.lower() == 'awwnime')
+        creatively_named_function(
+            'get_from awwnime 8 rising',
+            8,
+            lambda i: i.subreddit.display_name.lower() == 'awwnime')

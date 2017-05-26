@@ -8,7 +8,6 @@ kind of intimidating to look at the list of commands without them.
 """
 # TODO: Generalize so any cmd.Cmd can use helper.Helper.
 
-import itertools
 
 class CommandCategory(object):
     def __init__(self, prawtoys, header, command_names):
@@ -18,8 +17,9 @@ class CommandCategory(object):
 
         for i in command_names:
             if not hasattr(prawtoys, 'do_' + i):
-                raise ValueError('CommandCategory called with '
-                    'nonexistent command: ' + i)
+                raise ValueError(
+                    'CommandCategory called with nonexistent command: ' + i)
+
 
 class Helper(object):
     def __init__(self, prawtoys, *args):
@@ -51,8 +51,9 @@ class Helper(object):
                 self.command_categories.append(
                     CommandCategory(prawtoys, header, command_names))
         else:
-            raise ValueError("Helper was called with an"
-                " invalid number of arguments:" + str(len(args) + 1))
+            raise ValueError(
+                "Helper was called with an invalid number of arguments:"
+                + str(len(args) + 1))
 
     def get_all_command_names(self):
         command_names = []
@@ -67,13 +68,14 @@ class Helper(object):
 
         List available commands with "help" or detailed help with "help cmd".
         '''
-        # This is pretty much the cmd.Cmd.do_help method copied verbatim, with a
-        # few changes here-and-there.
+        # This is pretty much the cmd.Cmd.do_help method copied verbatim, with
+        # a few changes here-and-there.
 
         # If they want help on a specific command, just pass them off to
         # the original method. No reason to reinvent the wheel in this
         # particular case.
-        if arg: return cmd.Cmd.do_help(self, arg)
+        if arg:
+            return cmd.Cmd.do_help(self, arg)
 
         # TODO: Yeah, I know. This is very... Lisp.
         command_categories = CommandCategories(
@@ -128,9 +130,8 @@ class Helper(object):
         prawtoys.print(prawtoys.doc_leader)
 
         for i in command_categories.command_categories:
-            self.print_topics(i.header, i.command_names, 15,80)
+            self.print_topics(i.header, i.command_names, 15, 80)
 
-        self.print_topics('Uncategorized commands.', misc_commands, 15,80)
-        self.print_topics(self.misc_header, list(help.keys()), 15,80)
-        self.print_topics(self.undoc_header, undocumented_commands, 15,80)
-
+        self.print_topics('Uncategorized commands.', misc_commands, 15, 80)
+        self.print_topics(self.misc_header, list(help.keys()), 15, 80)
+        self.print_topics(self.undoc_header, undocumented_commands, 15, 80)

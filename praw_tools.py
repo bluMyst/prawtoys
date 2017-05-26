@@ -2,8 +2,9 @@ import praw
 import ahto_lib
 
 # When displaying comments/submissions, how many characters should we show?
-# I.E., how many characters wide should we assume the user's terminal window is?
+# I.E. how many characters wide should we assume the user's terminal window is?
 ASSUMED_CONSOLE_WIDTH = 80
+
 
 def check_praw_version(min_version):
     ''' Checks if the current praw version is at least min_version.
@@ -21,11 +22,11 @@ def check_praw_version(min_version):
     praw_version = [int(i) for i in praw.__version__.split('.')]
 
     if len(min_version) != 3:
-        raise ValueError('min_version must be in the form:'
-            ' version.subversion.bugfix')
+        raise ValueError(
+            'min_version must be in the form: version.subversion.bugfix')
     elif len(praw_version) != 3:
-        raise RuntimeError('Unable to parse praw.__version__: '
-            + repr(praw.__version__))
+        raise RuntimeError(
+            'Unable to parse praw.__version__: ' + repr(praw.__version__))
 
     for min, praw_ in zip(min_version, praw_version):
         if praw_ < min:
@@ -33,14 +34,17 @@ def check_praw_version(min_version):
 
     return True
 
+
 def is_comment(submission):
     return isinstance(submission, praw.objects.Comment)
+
 
 def is_submission(submission):
     return isinstance(submission, praw.objects.Submission)
 
-def comment_str(comment:praw.objects.Comment,
-        characters_needed=0) -> str:
+
+def comment_str(comment: praw.objects.Comment,
+                characters_needed=0) -> str:
     '''
     Convert a comment into to a string that perfectly fits on a terminal that's
     ASSUMED_CONSOLE_WIDTH characters wide.
@@ -102,8 +106,9 @@ def comment_str(comment:praw.objects.Comment,
     comment_text = ahto_lib.shorten_string(comment_text, max_comment_width)
     return comment_text + subreddit_indicator
 
-def submission_str(submission:praw.objects.Submission,
-        characters_needed=0) -> str:
+
+def submission_str(submission: praw.objects.Submission,
+                   characters_needed=0) -> str:
     '''
     convert a submission to a string
 
@@ -121,6 +126,7 @@ def submission_str(submission:praw.objects.Submission,
 
     return title + subreddit_indicator
 
+
 def praw_object_to_string(praw_object, characters_needed=0):
     ''' only works on submissions and comments
 
@@ -134,6 +140,7 @@ def praw_object_to_string(praw_object, characters_needed=0):
     elif is_comment(praw_object):
         return comment_str(praw_object, characters_needed)
 
+
 def praw_object_url(praw_object):
     ''' returns a unicode url for the given submission or comment '''
     if is_submission(praw_object):
@@ -143,4 +150,3 @@ def praw_object_url(praw_object):
     else:
         raise ValueError(
             "praw_object_url only handles submissions and comments")
-
